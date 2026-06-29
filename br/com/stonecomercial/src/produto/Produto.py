@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from br.com.stonecomercial.src.financeiro.Real import Financeiro
-from br.com.stonecomercial.src.produto.UnidadeMedida import UnidadeMedida
+from financeiro.Real  import Financeiro
+from UnidadeMedida import UnidadeMedida
 from datetime import date
 
 
@@ -62,5 +62,8 @@ class Item(ComportamentoEstoque):
 i = Item(UnidadeMedida.kG, Financeiro.Real,7)
 i.entrada(0.001,10)
 print(i.vizualizar())
+f = Financeiro.Real
+
+print(f.getNome())
 
 
