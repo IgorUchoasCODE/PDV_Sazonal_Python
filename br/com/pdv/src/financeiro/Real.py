@@ -24,11 +24,7 @@ class Financeiro(Enum):
     def parseCentavosPorMilhar(self,Reais) -> int:
         centavos = self.__M * Reais 
 
-        if centavos < 1:
+        if centavos < 0.1:
             raise TypeError("Valor menor que 1/10 de centavos")
         
         return int(centavos)
-
-r = Financeiro.Real
-
-print(r.parseCentavosPorMilhar(0.001))
