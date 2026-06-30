@@ -21,10 +21,10 @@ class UnidadeMedida(Enum):
         return self.__descricao
 
     def getMultInt(self) -> int:
-        return self.__descricao
+        return int(self.__deUmPra)
 
-    def parseInt(self, valor: float) -> int:
-        return valor * self.__deUmPra
+    def parseInt(self, valor: int) -> int:
+        return int(valor * self.__deUmPra)
        
     
 

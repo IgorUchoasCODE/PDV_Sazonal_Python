@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
-from financeiro.Real  import Financeiro
-from UnidadeMedida import UnidadeMedida
-from datetime import date
+from br.com.pdv.src.financeiro.Real import MoedaReal
+from br.com.pdv.src.produto.UnidadeMedida import UnidadeMedida
+
 
 
 
@@ -26,26 +26,35 @@ class ComportamentoEstoque(ABC):
 
 class Item(ComportamentoEstoque):
 
-    def __init__(self, medida:UnidadeMedida, real:Financeiro, diasDurabilidade:int):
+    def __init__(self, medida:UnidadeMedida, real:MoedaReal, diasDurabilidade:int):
         self.__M = medida;
         self.__D = diasDurabilidade;
         self.__R = real;
 
-        self.__estoque:int      = 0;
-        self.__valorUni:int     = 0;
-        self.__valorEstoque:int = 0;
-
-
-    def saida(self, quantidade):
-        return super().saida(quantidade)
-    
+        self.__estoque  = 0;
+        self.__valorPorUn = 0;
+        self.__valorEstoque = 0;
 
     def entrada(self, quantidade:float, valorUnitario:float):
 
-        self.__estoque = int(self.__M.parseInt(quantidade))
-        self.__V = valorUnitario
+        self.__estoque    = self.__M.parseInt(quantidade)
+        self.__V          = self.__R.parseCentavosPorMilhar(valorUnitario)
+        self.__valorEstoque = self.__R.calculo_PQV_T(self.__M.getMultInt(), self.__estoque, self.__V)
+        self.__valorPorUn = self.__R.calculo_QeVp_Vu(self.__M.getMultInt(),self.__V)
         
 
+    def saida(self, quantidade,valorVenda) -> int:
+        q = self.__M.parseInt(quantidade)
+        v = self.__R.parseCentavosPorMilhar(valorVenda)
+        print(v)
+        if self.__estoque < q :
+            raise ValueError(f"Estoque insuficiente{self.__estoque}")
+        
+        self.__estoque -= q
+        self.__valorEstoque -= q * self.__valorPorUn
+        
+        return self.__R.calculo_QpQsVuVv_L(q,self.__valorPorUn, v)
+        
 
     def atualizar(self):
         return super().atualizar()
@@ -54,16 +63,22 @@ class Item(ComportamentoEstoque):
         return {
             "M" : self.__M.getDescription(),
             "E" : self.__estoque,
-            "V" : self.__V
+            "V" : self.__V,
+            "U" : self.__valorPorUn,
+            "T": self.__valorEstoque
+
         }
     
 
 
-i = Item(UnidadeMedida.kG, Financeiro.Real,7)
-i.entrada(0.001,10)
+
+
+i = Item(UnidadeMedida.UNIDADE , MoedaReal.Real, 10)
+
+i.entrada(10,120)
+
 print(i.vizualizar())
-f = Financeiro.Real
 
-print(f.getNome())
+print(i.saida(2,130.89))
 
-
+print(i.vizualizar())
