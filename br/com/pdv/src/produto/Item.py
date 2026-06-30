@@ -1,27 +1,6 @@
-from abc import ABC, abstractmethod
+from br.com.pdv.src.produto.comportamentoEstoque import ComportamentoEstoque
 from br.com.pdv.src.financeiro.Real import MoedaReal
 from br.com.pdv.src.produto.UnidadeMedida import UnidadeMedida
-
-
-
-
-class ComportamentoEstoque(ABC):
-   
-    @abstractmethod
-    def saida(self, quantidade: int):
-        pass
-
-    def entrada(self, quantidade: int):
-        pass
-
-    @abstractmethod
-    def atualizar(self):
-        pass
-
-    @abstractmethod
-    def vizualizar(self) -> dict:
-        pass
-
 
 
 class Item(ComportamentoEstoque):
@@ -44,9 +23,10 @@ class Item(ComportamentoEstoque):
         
 
     def saida(self, quantidade,valorVenda) -> int:
+
         q = self.__M.parseInt(quantidade)
         v = self.__R.parseCentavosPorMilhar(valorVenda)
-        print(v)
+
         if self.__estoque < q :
             raise ValueError(f"Estoque insuficiente{self.__estoque}")
         
@@ -57,28 +37,22 @@ class Item(ComportamentoEstoque):
         
 
     def atualizar(self):
-        return super().atualizar()
+        
+        if self.__estoque == 0:
+            return False
+        else:
+            return True
     
     def vizualizar(self):
         return {
-            "M" : self.__M.getDescription(),
-            "E" : self.__estoque,
-            "V" : self.__V,
-            "U" : self.__valorPorUn,
-            "T": self.__valorEstoque
+          "M" : self.__M,
+          "D" : self.__D,
+          "R" : self.__R,
+          "V" : self.__V,
 
+          "Estoque" : self.__estoque,
+          "ValorPOrUn" : self.__valorPorUn,
+          "ValorEstoque" : self.__valorEstoque
         }
     
 
-
-
-
-i = Item(UnidadeMedida.UNIDADE , MoedaReal.Real, 10)
-
-i.entrada(10,120)
-
-print(i.vizualizar())
-
-print(i.saida(2,130.89))
-
-print(i.vizualizar())

@@ -32,8 +32,6 @@ class MoedaReal(Enum):
         return qV - qC
 
 
-    
-
     def parseCentavosPorMilhar(self, reais):
         return int(
             (Decimal(str(reais)) * Decimal(self.__M))
