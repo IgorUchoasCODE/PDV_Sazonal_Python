@@ -1,9 +1,6 @@
 from enum import Enum
 
 
-
-from enum import Enum
-
 class Sexo(Enum):
     MASCULINO = ("Masculino", "M", 1)
     FEMININO = ("Feminino", "F", 2)
@@ -24,6 +21,4 @@ class Sexo(Enum):
 
     @property
     def codigo(self):
-        return self.__codigo
-
- 
+        return self.__codigo       
