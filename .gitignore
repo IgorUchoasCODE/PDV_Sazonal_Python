@@ -1,0 +1,28 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# C extensions
+*.so
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+
+# Local API Keys Config (Não commitar chaves)
+keyApis.py
+br/com/pdv/src/apis/keyApis.py
+
+# Logs e arquivos temporarios
+*.log
+temp/
+tmp/
