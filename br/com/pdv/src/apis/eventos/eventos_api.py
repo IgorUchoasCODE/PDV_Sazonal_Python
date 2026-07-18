@@ -600,6 +600,16 @@ def obter_localizacao() -> dict | bool:
     return False
 
 
+
+
+
+
+
+
+
+
+
+
 # =====================================================================
 #  TESTE DIRETO (executar: python -m br.com.pdv.src.apis.eventos.eventos_api)
 # =====================================================================
@@ -642,7 +652,7 @@ if __name__ == "__main__":
 
     # Teste 3: Eventos proximos (30 dias)
     print(f"\n[TESTE 3] Eventos nos proximos 30 dias:")
-    proximos = api.obter_eventos_proximos(30)
+    proximos = api.obter_eventos_proximos(0)
     if proximos:
         for ev in proximos[:5]:
             print(f"  {ev.data_inicio} | {ev.nome} ({ev.fonte})")

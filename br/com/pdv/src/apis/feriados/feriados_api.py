@@ -3,169 +3,165 @@ API de Feriados Nacionais e Pontos Facultativos do Brasil
 Utiliza a BrasilAPI (gratuita, sem chave de API necessária)
 - Feriados: https://brasilapi.com.br/api/feriados/v1/{ano}
 
-Inclui também uma base local de pontos facultativos e feriados estaduais do Amazonas.
+Inclui também uma base local de pontos facultativos e feriados estaduais do Amazonas,
+agora carregada dinamicamente a partir de um arquivo JSON (sem dados no código).
 """
 import urllib.request
 import json
+import os
 from datetime import date
 
-# Base local de Pontos Facultativos Nacionais (normalmente definidos por decreto)
-# e feriados estaduais do Amazonas
-PONTOS_FACULTATIVOS = {
-    2025: [
-        {"data": "2025-03-03", "nome": "Carnaval (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2025-03-04", "nome": "Carnaval (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2025-03-05", "nome": "Quarta-feira de Cinzas (até 14h)", "tipo": "facultativo"},
-        {"data": "2025-06-19", "nome": "Corpus Christi (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2025-10-28", "nome": "Dia do Servidor Público (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2025-12-24", "nome": "Véspera de Natal (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2025-12-31", "nome": "Véspera de Ano Novo (Ponto Facultativo)", "tipo": "facultativo"},
-    ],
-    2026: [
-        {"data": "2026-02-16", "nome": "Carnaval (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2026-02-17", "nome": "Carnaval (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2026-02-18", "nome": "Quarta-feira de Cinzas (até 14h)", "tipo": "facultativo"},
-        {"data": "2026-06-04", "nome": "Corpus Christi (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2026-10-28", "nome": "Dia do Servidor Público (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2026-12-24", "nome": "Véspera de Natal (Ponto Facultativo)", "tipo": "facultativo"},
-        {"data": "2026-12-31", "nome": "Véspera de Ano Novo (Ponto Facultativo)", "tipo": "facultativo"},
-    ]
-}
 
-# Feriados Estaduais do Amazonas
-FERIADOS_AMAZONAS = [
-    {"data_recorrente": "09-05", "nome": "Elevação do Amazonas à Categoria de Província", "tipo": "estadual"},
-    {"data_recorrente": "11-20", "nome": "Dia da Consciência Negra", "tipo": "estadual"},
-    {"data_recorrente": "12-08", "nome": "Dia de Nossa Senhora da Conceição (Padroeira de Manaus)", "tipo": "municipal_manaus"},
-    {"data_recorrente": "10-24", "nome": "Aniversário de Manaus", "tipo": "municipal_manaus"},
-]
-
-
-def _fazer_requisicao(url: str) -> list | bool:
-    """Faz uma requisição HTTP GET e retorna o JSON."""
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": "PDV_Sazonal_Python/1.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            dados = json.loads(resp.read().decode("utf-8"))
-            return dados
-    except Exception as e:
-        print(f"Erro na requisição para {url}: {e}")
-        return False
-
-
-def obter_feriados_nacionais(ano: int = None) -> dict | bool:
+class FeriadosAPI:
     """
-    Retorna os feriados nacionais do ano informado via BrasilAPI.
-    Se 'ano' for None, usa o ano corrente.
-    Retorna um dicionário organizado por mês.
+    Classe estática agregadora de Feriados Nacionais (BrasilAPI) e Locais (JSON).
     """
-    if ano is None:
-        ano = date.today().year
+    
+    _ARQUIVO_DADOS_LOCAIS = os.path.join(os.path.dirname(__file__), "feriados_locais.json")
+    
+    @staticmethod
+    def _carregar_dados_locais() -> dict:
+        """Carrega os pontos facultativos e feriados estaduais do arquivo JSON."""
+        try:
+            with open(FeriadosAPI._ARQUIVO_DADOS_LOCAIS, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception as e:
+            print(f"[FeriadosAPI] Erro ao carregar {FeriadosAPI._ARQUIVO_DADOS_LOCAIS}: {e}")
+            return {"PONTOS_FACULTATIVOS": {}, "FERIADOS_AMAZONAS": []}
 
-    url = f"https://brasilapi.com.br/api/feriados/v1/{ano}"
-    dados_brutos = _fazer_requisicao(url)
+    @staticmethod
+    def _fazer_requisicao(url: str) -> list | bool:
+        """Faz uma requisição HTTP GET e retorna o JSON."""
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "PDV_Sazonal_Python/1.0"})
+            with urllib.request.urlopen(req, timeout=15) as resp:
+                dados = json.loads(resp.read().decode("utf-8"))
+                return dados
+        except Exception as e:
+            print(f"[FeriadosAPI] Erro na requisição para {url}: {e}")
+            return False
 
-    if not dados_brutos:
-        return False
+    @staticmethod
+    def obter_feriados_nacionais(ano: int = None) -> dict | bool:
+        """
+        Retorna os feriados nacionais do ano informado via BrasilAPI.
+        Se 'ano' for None, usa o ano corrente.
+        Retorna um dicionário organizado por mês.
+        """
+        if ano is None:
+            ano = date.today().year
 
-    try:
-        resultado = {
+        url = f"https://brasilapi.com.br/api/feriados/v1/{ano}"
+        dados_brutos = FeriadosAPI._fazer_requisicao(url)
+
+        if not dados_brutos:
+            return False
+
+        try:
+            resultado = {
+                "ano": ano,
+                "fonte": "BrasilAPI",
+                "totalFeriados": len(dados_brutos),
+                "feriados": []
+            }
+
+            for feriado in dados_brutos:
+                resultado["feriados"].append({
+                    "data": feriado.get("date"),
+                    "nome": feriado.get("name"),
+                    "tipo": feriado.get("type", "national"),
+                })
+
+            return resultado
+
+        except Exception as e:
+            print(f"[FeriadosAPI] Erro ao processar feriados nacionais: {e}")
+            return False
+
+    @staticmethod
+    def obter_pontos_facultativos(ano: int = None) -> dict:
+        """
+        Retorna os pontos facultativos do ano informado (base local via JSON).
+        """
+        if ano is None:
+            ano = date.today().year
+
+        dados_locais = FeriadosAPI._carregar_dados_locais()
+        pontos_facultativos = dados_locais.get("PONTOS_FACULTATIVOS", {})
+        
+        # PONTOS_FACULTATIVOS é um dicionário com os anos como chaves (strings) no JSON
+        facultativos = pontos_facultativos.get(str(ano), [])
+
+        return {
             "ano": ano,
-            "fonte": "BrasilAPI",
-            "totalFeriados": len(dados_brutos),
-            "feriados": []
+            "fonte": "Base Local (JSON)",
+            "totalPontosFacultativos": len(facultativos),
+            "pontosFacultativos": facultativos
         }
 
-        for feriado in dados_brutos:
-            resultado["feriados"].append({
-                "data": feriado.get("date"),
-                "nome": feriado.get("name"),
-                "tipo": feriado.get("type", "national"),
+    @staticmethod
+    def obter_feriados_amazonas(ano: int = None) -> dict:
+        """
+        Retorna os feriados estaduais do Amazonas e municipais de Manaus (base local via JSON).
+        """
+        if ano is None:
+            ano = date.today().year
+
+        dados_locais = FeriadosAPI._carregar_dados_locais()
+        feriados_amazonas = dados_locais.get("FERIADOS_AMAZONAS", [])
+
+        feriados_ano = []
+        for f in feriados_amazonas:
+            feriados_ano.append({
+                "data": f"{ano}-{f['data_recorrente']}",
+                "nome": f["nome"],
+                "tipo": f["tipo"],
             })
 
-        return resultado
+        return {
+            "ano": ano,
+            "estado": "Amazonas",
+            "fonte": "Base Local (JSON)",
+            "totalFeriados": len(feriados_ano),
+            "feriados": feriados_ano
+        }
 
-    except Exception as e:
-        print(f"Erro ao processar feriados: {e}")
-        return False
+    @staticmethod
+    def obter_calendario_completo(ano: int = None) -> dict | bool:
+        """
+        Retorna um calendário completo unificado contendo:
+        - Feriados Nacionais (BrasilAPI)
+        - Pontos Facultativos (Base Local)
+        - Feriados Estaduais do Amazonas (Base Local)
+        Tudo ordenado por data.
+        """
+        if ano is None:
+            ano = date.today().year
 
+        nacionais = FeriadosAPI.obter_feriados_nacionais(ano)
+        facultativos = FeriadosAPI.obter_pontos_facultativos(ano)
+        estaduais = FeriadosAPI.obter_feriados_amazonas(ano)
 
-def obter_pontos_facultativos(ano: int = None) -> dict:
-    """
-    Retorna os pontos facultativos do ano informado (base local).
-    """
-    if ano is None:
-        ano = date.today().year
+        todas_datas = []
 
-    facultativos = PONTOS_FACULTATIVOS.get(ano, [])
+        if nacionais and "feriados" in nacionais:
+            for f in nacionais["feriados"]:
+                todas_datas.append(f)
 
-    return {
-        "ano": ano,
-        "fonte": "Base Local (Decreto Federal)",
-        "totalPontosFacultativos": len(facultativos),
-        "pontosFacultativos": facultativos
-    }
-
-
-def obter_feriados_amazonas(ano: int = None) -> dict:
-    """
-    Retorna os feriados estaduais do Amazonas e municipais de Manaus.
-    """
-    if ano is None:
-        ano = date.today().year
-
-    feriados_ano = []
-    for f in FERIADOS_AMAZONAS:
-        feriados_ano.append({
-            "data": f"{ano}-{f['data_recorrente']}",
-            "nome": f["nome"],
-            "tipo": f["tipo"],
-        })
-
-    return {
-        "ano": ano,
-        "estado": "Amazonas",
-        "fonte": "Base Local (Legislação Estadual/Municipal)",
-        "totalFeriados": len(feriados_ano),
-        "feriados": feriados_ano
-    }
-
-
-def obter_calendario_completo(ano: int = None) -> dict | bool:
-    """
-    Retorna um calendário completo unificado contendo:
-    - Feriados Nacionais (BrasilAPI)
-    - Pontos Facultativos (Base Local)
-    - Feriados Estaduais do Amazonas (Base Local)
-    Tudo ordenado por data.
-    """
-    if ano is None:
-        ano = date.today().year
-
-    nacionais = obter_feriados_nacionais(ano)
-    facultativos = obter_pontos_facultativos(ano)
-    estaduais = obter_feriados_amazonas(ano)
-
-    todas_datas = []
-
-    if nacionais and "feriados" in nacionais:
-        for f in nacionais["feriados"]:
+        for f in facultativos.get("pontosFacultativos", []):
             todas_datas.append(f)
 
-    for f in facultativos.get("pontosFacultativos", []):
-        todas_datas.append(f)
+        for f in estaduais.get("feriados", []):
+            todas_datas.append(f)
 
-    for f in estaduais.get("feriados", []):
-        todas_datas.append(f)
+        # Ordena por data
+        todas_datas.sort(key=lambda x: x.get("data", ""))
 
-    # Ordena por data
-    todas_datas.sort(key=lambda x: x.get("data", ""))
-
-    return {
-        "ano": ano,
-        "totalEventos": len(todas_datas),
-        "calendario": todas_datas
-    }
+        return {
+            "ano": ano,
+            "totalEventos": len(todas_datas),
+            "calendario": todas_datas
+        }
 
 
 # =================================================================
@@ -180,26 +176,26 @@ if __name__ == "__main__":
 
     # Teste 1: Feriados Nacionais
     print(f"\n[TESTE 1] Feriados Nacionais de {ano_teste}:")
-    nacionais = obter_feriados_nacionais(ano_teste)
+    nacionais = FeriadosAPI.obter_feriados_nacionais(ano_teste)
     if nacionais:
         for f in nacionais["feriados"]:
             print(f"  {f['data']} | {f['nome']} ({f['tipo']})")
     
     # Teste 2: Pontos Facultativos
     print(f"\n[TESTE 2] Pontos Facultativos de {ano_teste}:")
-    facult = obter_pontos_facultativos(ano_teste)
+    facult = FeriadosAPI.obter_pontos_facultativos(ano_teste)
     for f in facult["pontosFacultativos"]:
         print(f"  {f['data']} | {f['nome']}")
 
     # Teste 3: Feriados Estaduais
     print(f"\n[TESTE 3] Feriados Estaduais do Amazonas ({ano_teste}):")
-    estaduais = obter_feriados_amazonas(ano_teste)
+    estaduais = FeriadosAPI.obter_feriados_amazonas(ano_teste)
     for f in estaduais["feriados"]:
         print(f"  {f['data']} | {f['nome']} ({f['tipo']})")
 
     # Teste 4: Calendário Completo
     print(f"\n[TESTE 4] Calendário Completo Unificado ({ano_teste}):")
-    cal = obter_calendario_completo(ano_teste)
+    cal = FeriadosAPI.obter_calendario_completo(ano_teste)
     if cal:
         print(f"  Total de eventos no ano: {cal['totalEventos']}")
         for f in cal["calendario"]:

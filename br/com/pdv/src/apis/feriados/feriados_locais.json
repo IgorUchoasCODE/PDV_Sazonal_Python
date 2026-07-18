@@ -1,0 +1,28 @@
+{
+  "PONTOS_FACULTATIVOS": {
+    "2025": [
+      {"data": "2025-03-03", "nome": "Carnaval (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2025-03-04", "nome": "Carnaval (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2025-03-05", "nome": "Quarta-feira de Cinzas (até 14h)", "tipo": "facultativo"},
+      {"data": "2025-06-19", "nome": "Corpus Christi (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2025-10-28", "nome": "Dia do Servidor Público (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2025-12-24", "nome": "Véspera de Natal (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2025-12-31", "nome": "Véspera de Ano Novo (Ponto Facultativo)", "tipo": "facultativo"}
+    ],
+    "2026": [
+      {"data": "2026-02-16", "nome": "Carnaval (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2026-02-17", "nome": "Carnaval (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2026-02-18", "nome": "Quarta-feira de Cinzas (até 14h)", "tipo": "facultativo"},
+      {"data": "2026-06-04", "nome": "Corpus Christi (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2026-10-28", "nome": "Dia do Servidor Público (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2026-12-24", "nome": "Véspera de Natal (Ponto Facultativo)", "tipo": "facultativo"},
+      {"data": "2026-12-31", "nome": "Véspera de Ano Novo (Ponto Facultativo)", "tipo": "facultativo"}
+    ]
+  },
+  "FERIADOS_AMAZONAS": [
+    {"data_recorrente": "09-05", "nome": "Elevação do Amazonas à Categoria de Província", "tipo": "estadual"},
+    {"data_recorrente": "11-20", "nome": "Dia da Consciência Negra", "tipo": "estadual"},
+    {"data_recorrente": "12-08", "nome": "Dia de Nossa Senhora da Conceição (Padroeira de Manaus)", "tipo": "municipal_manaus"},
+    {"data_recorrente": "10-24", "nome": "Aniversário de Manaus", "tipo": "municipal_manaus"}
+  ]
+}
