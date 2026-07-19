@@ -23,8 +23,11 @@ def main():
     # ---------------------------------------------------------
     # Passo 1: Criação de Empresa
     # ---------------------------------------------------------
+
     print("\n[PASSO 1] Criando a Empresa (Distribuidora X)...")
+
     empresa_x = Empresa(id="1", nome="Distribuidora X")
+    
     print(f" -> Empresa criada: {empresa_x.info()['nome']}")
 
     # ---------------------------------------------------------
@@ -126,9 +129,7 @@ def main():
     print("\n[PASSO 13] Totais Globais e Estáticos (Contabilidade do Sistema):")
     print(formatar_dict(Fornecedor.getDadosGlobais()))
 
-    print("\n" + "="*70)
-    print(" TESTES FINALIZADOS COM SUCESSO! ")
-    print("="*70)
+  
 
 if __name__ == '__main__':
     main()

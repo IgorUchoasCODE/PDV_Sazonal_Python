@@ -17,15 +17,15 @@ class productClassFactory:
         for um in UnidadeMedida:
             
             #Se for conjunto, verificar se a descrição é igual
-            if um.getDescription() == descricao:
+            if um.getDescription().upper() == descricao.upper():
                 unidade_enum = um
                 break
 
-            elif um.getDescription() == descricao.split()[0]:
+            elif um.getDescription().upper() == descricao.split()[0].upper():
                 #Extrai o fator conjunto da descrição
                 fator_conjunto = int(descricao.split("(")[1].split(" ")[0])
 
-                if UnidadeConjunto(um, fator_conjunto).getDescription() == descricao:
+                if UnidadeConjunto(um, fator_conjunto).getDescription().upper() == descricao.upper():
                     unidade_enum = UnidadeConjunto(um, fator_conjunto)
                     break
 
@@ -104,7 +104,7 @@ class productClassFactory:
         return produto
 
 
-if False:
+if True:
     # Exemplo funcional com strings e tipos primitivos apenas no dicionário
     instrucoes_teste_1 = {
         "id": 1,
@@ -118,7 +118,7 @@ if False:
         "id": 2,
         "nome": "caixa de ovos branco tipo A",
         "durabilidade": 7,
-        "unidadeMedida": "Conjunto/Pacote (360 un.)", # Passando como string pura
+        "unidadeMedida": "CONJUNTO/PACOTE (360 un.)", # Passando como string pura
         "fatorConjunto": 360 # Parâmetro extra necessário para a forma especial do Conjunto
 
     }
