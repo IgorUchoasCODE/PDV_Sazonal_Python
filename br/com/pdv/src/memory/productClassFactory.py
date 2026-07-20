@@ -60,7 +60,7 @@ class productClassFactory:
         produto = Produto(
             id=instrucoes.get("id"),
             nome=instrucoes.get("nome"),
-            durabilidade=instrucoes.get("durabilidade"),
+            diasDuraveis=instrucoes.get("diasDuraveis"),
             unidadeMedida=unidade_obj
         )
         
@@ -97,19 +97,19 @@ class productClassFactory:
         if dados["nome"] != instrucoes["nome"]:
             raise ValueError(f"Falha no teste: Nome incompatível. Esperado {instrucoes['nome']}, obtido {dados['nome']}")
         
-        if dados["diasDuraveis"] != instrucoes["durabilidade"]:
-            raise ValueError(f"Falha no teste: Durabilidade incompatível. Esperado {instrucoes['durabilidade']}, obtido {dados['diasDuraveis']}")
+        if dados["diasDuraveis"] != instrucoes["diasDuraveis"]:
+            raise ValueError(f"Falha no teste: diasDuraveis incompatível. Esperado {instrucoes['diasDuraveis']}, obtido {dados['diasDuraveis']}")
         
        
         return produto
 
 
-if True:
+if False:
     # Exemplo funcional com strings e tipos primitivos apenas no dicionário
     instrucoes_teste_1 = {
         "id": 1,
         "nome": "Coca-Cola 2L",
-        "durabilidade": 365,
+        "diasDuraveis": 365,
         "unidadeMedida": "Unidade" # Passando como string pura
 
     }
@@ -117,7 +117,7 @@ if True:
     instrucoes_teste_2 = {
         "id": 2,
         "nome": "caixa de ovos branco tipo A",
-        "durabilidade": 7,
+        "diasDuraveis": 7,
         "unidadeMedida": "CONJUNTO/PACOTE (360 un.)", # Passando como string pura
         "fatorConjunto": 360 # Parâmetro extra necessário para a forma especial do Conjunto
 
@@ -126,7 +126,7 @@ if True:
     instrucoes_teste_3 = {
         "id": 3,
         "nome": "cartela de ovos branco tipo A",
-        "durabilidade": 7,
+        "diasDuraveis": 7,
         "unidadeMedida": "Conjunto/Pacote (30 un.)",
         "fatorConjunto": 30,
         "receita": {2: 30}

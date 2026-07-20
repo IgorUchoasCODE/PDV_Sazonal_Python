@@ -1,5 +1,4 @@
 from br.com.pdv.src.registro.validarResgistro import IValidador
-from br.com.pdv.src.registro.email import Email
 
 class Registro:
 

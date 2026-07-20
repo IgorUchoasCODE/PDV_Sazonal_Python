@@ -41,10 +41,10 @@ def main():
     # Passo 3: Criação de Produtos
     # ---------------------------------------------------------
     print("\n[PASSO 3] Criando Produtos para inserir na nota...")
-    produto1 = Produto(id=1, nome="Refrigerante Lata", durabilidade=180, unidadeMedida=UnidadeMedida.UNIDADE)
+    produto1 = Produto(id=1, nome="Refrigerante Lata", diasDuraveis=180, unidadeMedida=UnidadeMedida.UNIDADE)
     produto1.insertPropertValue(valorUnidario="3.50", quantidade="100") # Custo: 3.50, Qtd: 100
 
-    produto2 = Produto(id=2, nome="Fardo de Arroz 5kg", durabilidade=365, unidadeMedida=UnidadeMedida.UNIDADE)
+    produto2 = Produto(id=2, nome="Fardo de Arroz 5kg", diasDuraveis=365, unidadeMedida=UnidadeMedida.UNIDADE)
     produto2.insertPropertValue(valorUnidario="20.00", quantidade="50") # Custo: 20.00, Qtd: 50
 
     print(" -> Produtos instanciados com sucesso.")

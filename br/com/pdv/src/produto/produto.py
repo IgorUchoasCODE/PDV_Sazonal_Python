@@ -11,7 +11,7 @@ class Produto:
     def __init__(self,
                  id: int,
                  nome: str,
-                 durabilidade: int,
+                 diasDuraveis: int,
                  unidadeMedida: Union[UnidadeMedida, UnidadeConjunto]
                  ):
         
@@ -23,14 +23,14 @@ class Produto:
         #verfiva se todos os parametros estão corretos
         if not isinstance(id, int) or id <= 0: raise ValueError(f"o id deve ser um numero inteiro positivo {id}")
         if not isinstance(nome, str) or nome == "": raise ValueError(f"o nome deve ser uma string {nome}")
-        if not isinstance(durabilidade, int) or durabilidade <= 0: raise ValueError(f"a durabilidade deve ser um numero inteiro positivo {durabilidade}")
+        if not isinstance(diasDuraveis, int) or diasDuraveis <= 0: raise ValueError(f"a diasDuraveis deve ser um numero inteiro positivo {diasDuraveis}")
         if not isinstance(unidadeMedida, (UnidadeMedida, UnidadeConjunto)): raise ValueError(f"a unidadeMedida deve ser do tipo UnidadeMedida ou UnidadeConjunto {unidadeMedida}")
         
         #propriedade de identificação desse produto e sua caracteristicas
         self.__ID = id;
         self.__N = nome;
         self.__UM = unidadeMedida;
-        self.__D = durabilidade;
+        self.__D = diasDuraveis;
 
         # valores de oprção recebido em momentos específicos
         self.__v = None;
@@ -311,7 +311,7 @@ if False:
     p_kg = Produto(
         id=1,
         nome="Arroz Integral",
-        durabilidade=180,
+        diasDuraveis=180,
         unidadeMedida=UnidadeMedida.KG
     )
     p_kg.insertPropertValue(valorUnidario="5.50", quantidade="10.5") # 10.5 kg a 5.50/kg
@@ -328,7 +328,7 @@ if False:
     p_l = Produto(
         id=2,
         nome="Leite Integral",
-        durabilidade=10,
+        diasDuraveis=10,
         unidadeMedida=UnidadeMedida.L
     )
     p_l.insertPropertValue(valorUnidario="4.20", quantidade="20") # 20 litros a 4.20/L
@@ -345,7 +345,7 @@ if False:
     p_un = Produto(
         id=3,
         nome="Sabonete Líquido",
-        durabilidade=365,
+        diasDuraveis=365,
         unidadeMedida=UnidadeMedida.UNIDADE
     )
     p_un.insertPropertValue(valorUnidario="12.00", quantidade="50") # 50 unidades a 12.00/un
@@ -362,7 +362,7 @@ if False:
     p_conj = Produto(
         id=4,
         nome="Fardo de Coca-Cola 350ml",
-        durabilidade=120,
+        diasDuraveis=120,
         unidadeMedida=UnidadeConjunto(UnidadeMedida.CONJUNTO, 6) # Conjunto de 6 unidades
     )
     p_conj.insertPropertValue(valorUnidario="30.00", quantidade="10") # 10 fardos a 30.00/fardo

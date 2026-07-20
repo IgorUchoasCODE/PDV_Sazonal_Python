@@ -7,7 +7,7 @@ class Empresa:
 
     def __init__(self, id:str, nome:str):
         self.__I = id;
-        self.__N = nome
+        self.__N = nome;
 
         self.__registros      : list[Registro]         = []
         self.__representantes : dict[str,list[Pessoa]] = {}
