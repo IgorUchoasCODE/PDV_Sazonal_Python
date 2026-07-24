@@ -5,7 +5,7 @@ from br.com.pdv.src.registro.registro import Registro
 class Empresa:
     ''' essa classe representa empresa e seus representantes '''
 
-    def __init__(self, id:str, nome:str):
+    def __init__(self, id:int, nome:str):
         self.__I = id;
         self.__N = nome;
 

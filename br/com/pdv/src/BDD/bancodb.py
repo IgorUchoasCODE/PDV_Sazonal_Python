@@ -1,6 +1,12 @@
 import sqlite3
-import sqlite3
 import os
+import datetime
+
+# Registra os conversores recomendados para Python 3.12+ (remove DeprecationWarning)
+sqlite3.register_adapter(datetime.date, lambda val: val.isoformat())
+sqlite3.register_adapter(datetime.datetime, lambda val: val.isoformat(" "))
+sqlite3.register_converter("DATE", lambda val: datetime.date.fromisoformat(val.decode()))
+sqlite3.register_converter("TIMESTAMP", lambda val: datetime.datetime.fromisoformat(val.decode()))
 
 # Registra o conversor de BOOLEAN para retornar True/False em vez de 1/0
 sqlite3.register_converter("BOOLEAN", lambda v: v == b'1')
@@ -139,7 +145,7 @@ class BancoDB:
                 id_forma_pagamento INTEGER NOT NULL,
                 valor DECIMAL(10,3) NOT NULL,
                 data_pagamento DATE NOT NULL,
-                FOREIGN KEY (id_fluxo_nota) REFERENCES fluxosNotasEstoque(id),
+                FOREIGN KEY (id_fluxo_nota) REFERENCES fluxosNotasEstoque(id) ON DELETE CASCADE,
                 FOREIGN KEY (id_forma_pagamento) REFERENCES formaPagamento(id)
             );
 
@@ -153,7 +159,7 @@ class BancoDB:
                 lucroTotal DECIMAL(10,3) DEFAULT 0,
                 data DATE NOT NULL,
                 FOREIGN KEY (id_tipoNota) REFERENCES tiposNotas(id),
-                FOREIGN KEY (id_fluxo_nota) REFERENCES fluxosNotasEstoque(id),
+                FOREIGN KEY (id_fluxo_nota) REFERENCES fluxosNotasEstoque(id) ON DELETE CASCADE,
                 FOREIGN KEY (id_produto) REFERENCES produto(id)
             );
 
@@ -204,6 +210,9 @@ class BancoDB:
             CREATE UNIQUE INDEX IF NOT EXISTS uq_pessoa_empresa_relacao 
             ON entidades (id_pessoa, id_empresa) 
             WHERE id_pessoa IS NOT NULL AND id_empresa IS NOT NULL;
+
+            INSERT OR IGNORE INTO entidades (id_pessoa, id_empresa, fornecedor, cliente, funcionario)
+            VALUES( 1, NULL, 0, 1, 0);
 
             CREATE TABLE IF NOT EXISTS "cargos"(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -294,7 +303,7 @@ class BancoDB:
                 indicador_rio TEXT CHECK(indicador_rio IN ('SECA','NORMAL','CHEIA')),
                 indicador_chuva TEXT CHECK(indicador_chuva IN ('SECO','MODERADO','CHUVOSO')),
                 qtd_eventos_proximos INTEGER DEFAULT 0,
-                FOREIGN KEY (id_fluxo_nota) REFERENCES fluxosNotasEstoque(id)
+                FOREIGN KEY (id_fluxo_nota) REFERENCES fluxosNotasEstoque(id) ON DELETE CASCADE
             );
 
             -- Views SQL para facilitar JOINs

@@ -69,6 +69,18 @@ class Produto:
                 raise ValueError(f"este produto ja tem uma receita, não e possivel adicionar outra {self.__Receita}")
         
         elif self.__Receita != None:
+            if valorUnidario is not None and quantidade is not None:
+                try:
+                    vu = MoedaReal.calculo_QeVp_Vu(self.__UM.getMultInt(), MoedaReal.parseCentavosPorMilhar(valorUnidario))
+                    v = MoedaReal.parseCentavosPorMilhar(valorUnidario)
+                    q = self.__UM.parseInt(quantidade)
+                    self.__v = v
+                    self.__q = q
+                    self.__vu = vu
+                    self.__atualizarDados__()
+                    return True
+                except Exception as e:
+                    raise ValueError(f"erro ao converter valorUnidario ou quantidade: {e}")
             return self.__Receita
         
         else:
@@ -206,7 +218,7 @@ class Produto:
                     "valorTotalVendas" : self.__valorTotalVendas,
                     "valorTotalLucro" : self.__valorTotalLucro
                 }
-            else : 
+            else: 
                 dados = {
                     "id" : self.__ID,
                     "nome" : self.__N,
@@ -214,6 +226,18 @@ class Produto:
                     "diasDuraveis" : self.__D,
                     "Receita" : self.__Receita
                 }
+                if self.__v is not None:
+                    dados.update({
+                        "valor" : self.__v,
+                        "valorUnitario" : self.__vu,
+                        "quantidadeEntrada" : self.__q,
+                        "ValorTotal" : self.__valorTotal,
+                        "estoque" : self.__estoque,
+                        "valorTotalEstoque" : self.__valorTotalEstoque,
+                        "vendas" : self.__quantidadeVendas,
+                        "valorTotalVendas" : self.__valorTotalVendas,
+                        "valorTotalLucro" : self.__valorTotalLucro
+                    })
 
         else:
             if self.__Receita == None:
@@ -233,7 +257,7 @@ class Produto:
                     "valorTotalVendas" : MoedaReal.parseMilharParaReais(self.__valorTotalVendas),
                     "valorTotalLucro" : MoedaReal.parseMilharParaReais(self.__valorTotalLucro)
                 }
-            else : 
+            else: 
                 dados = {
                     "id" : self.__ID,
                     "nome" : self.__N,
@@ -241,6 +265,18 @@ class Produto:
                     "diasDuraveis" : self.__D,
                     "Receita" : self.__Receita
                 }
+                if self.__v is not None:
+                    dados.update({
+                        "valor" : MoedaReal.parseMilharParaReais(self.__v),
+                        "valorUnitario" : MoedaReal.parseMilharParaReais(self.__vu),
+                        "quantidadeEntrada" : self.__UM.parseFloat(self.__q),
+                        "ValorTotal" : MoedaReal.parseMilharParaReais(self.__valorTotal),
+                        "estoque" : self.__UM.parseFloat(self.__estoque),
+                        "valorTotalEstoque" : MoedaReal.parseMilharParaReais(self.__valorTotalEstoque),
+                        "vendas" : self.__UM.parseFloat(self.__quantidadeVendas),
+                        "valorTotalVendas" : MoedaReal.parseMilharParaReais(self.__valorTotalVendas),
+                        "valorTotalLucro" : MoedaReal.parseMilharParaReais(self.__valorTotalLucro)
+                    })
 
         return dados
     
@@ -272,7 +308,7 @@ class Produto:
 
             q = self.__UM.parseInt(quantidadeVendas);
 
-            if q > self.__estoque: raise ValueError(f"Quantidade {q} maior que estoque {self.__estoque}")
+            if self.__Receita == None and q > self.__estoque: raise ValueError(f"Quantidade {q} maior que estoque {self.__estoque}")
 
             vv = MoedaReal.parseCentavosPorMilhar(valorVenda);
             
@@ -304,6 +340,25 @@ class Produto:
             "valorVendaTotal" : MoedaReal.parseMilharParaReais(total),
             "lucroTotal" : MoedaReal.parseMilharParaReais(lucro)
         }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 if False:
@@ -378,26 +433,26 @@ if False:
 
 
 
-p = Produto(11,"cx ovo",30, UnidadeMedida.UNIDADE)
-p.insertPropertValue(valorUnidario=14.5, quantidade=60)
+    p = Produto(11,"cx ovo",30, UnidadeMedida.UNIDADE)
+    p.insertPropertValue(valorUnidario=14.5, quantidade=60)
 
-print("\n--- ANTES DA ALTERAÇÃO ---")
-for k, v in p.getDados(f=True).items():
-    print(f"{k} ==> {v}")
+    print("\n--- ANTES DA ALTERAÇÃO ---")
+    for k, v in p.getDados(f=True).items():
+        print(f"{k} ==> {v}")
 
-# Testa o novo método de alteração com dicionário
-resultado_alteracao = p.alterarValores({
-    "quantidade_add": 20,         # Soma 20 no estoque (Total de 80)
-    "valorUnidario": 15.00        # Aumenta o custo para 15.00
-})
+    # Testa o novo método de alteração com dicionário
+    resultado_alteracao = p.alterarValores({
+        "quantidade_add": 20,         # Soma 20 no estoque (Total de 80)
+        "valorUnidario": 15.00        # Aumenta o custo para 15.00
+    })
 
-if resultado_alteracao:
-    print("\n--- ALTERAÇÃO BEM SUCEDIDA ---")
-    print("ESTADO ANTES:")
-    for k, v in resultado_alteracao["antes"].items():
-        print(f"  {k}: {v}")
-    print("\nESTADO DEPOIS:")
-    for k, v in resultado_alteracao["depois"].items():
-        print(f"  {k}: {v}")
-else:
-    print("\n--- FALHA NA ALTERAÇÃO ---")
+    if resultado_alteracao:
+        print("\n--- ALTERAÇÃO BEM SUCEDIDA ---")
+        print("ESTADO ANTES:")
+        for k, v in resultado_alteracao["antes"].items():
+            print(f"  {k}: {v}")
+        print("\nESTADO DEPOIS:")
+        for k, v in resultado_alteracao["depois"].items():
+            print(f"  {k}: {v}")
+    else:
+        print("\n--- FALHA NA ALTERAÇÃO ---")

@@ -149,6 +149,51 @@ class SELECT(QueryBase):
         JOIN produto p ON fe.id_produto = p.id
         GROUP BY fe.id_produto"""
 
+    ESTOQUE_COMPRA_PRODUTO_TODOS = """select
+        fe.id_fluxo_nota,
+        fe.id_produto,
+        fe."valorUnidario",
+        fe.quantidade,
+        fe."data"
+        from "fluxoEstoque" as fe
+        WHERE "id_tipoNota" = 1;"""
+
+    ESTOQUE_VENDA_PRODUTO_TODOS = """select
+        fe.id_fluxo_nota,
+        fe.id_produto,
+        fe."valorUnidario",
+        fe.quantidade,
+        fe."data"
+        from "fluxoEstoque" as fe
+        WHERE "id_tipoNota" = 2;"""
+    
+    ESTOQUE_DEVOLUCAO_PRODUTO_TODOS = """select
+        fe.id_fluxo_nota,
+        fe.id_produto,
+        fe."valorUnidario",
+        fe.quantidade,
+        fe."data"
+        from "fluxoEstoque" as fe
+        WHERE "id_tipoNota" = 3;"""
+
+    ESTOQUE_PERDA_PRODUTO_TODOS = """select
+        fe.id_fluxo_nota,
+        fe.id_produto,
+        fe."valorUnidario",
+        fe.quantidade,
+        fe."data"
+        from "fluxoEstoque" as fe
+        WHERE "id_tipoNota" = 4;"""
+
+    ESTOQUE_REPOSICAO_PRODUTO_TODOS = """select
+        fe.id_fluxo_nota,
+        fe.id_produto,
+        fe."valorUnidario",
+        fe.quantidade,
+        fe."data"
+        from "fluxoEstoque" as fe
+        WHERE "id_tipoNota" = 5;"""
+
     # Fornecedores e Clientes (via view entidade completa)
     FORNECEDORES_TODOS = "SELECT * FROM vw_entidade_completa WHERE fornecedor = 1"
     CLIENTES_TODOS = "SELECT * FROM vw_entidade_completa WHERE cliente = 1"
@@ -221,3 +266,8 @@ class DB:
     SELECT = SELECT
     UPDATE = UPDATE
     DELETE = DELETE
+
+
+if __name__ == "__main__":
+    p =DB.SELECT.VW_PRODUTO_COMPLETO_POR_ID.buscar_um(3)
+    print(p)

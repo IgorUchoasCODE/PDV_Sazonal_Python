@@ -12,7 +12,7 @@ class Pessoa(ABC):
         self.__I  = id
         self.__N  = " ".join(nome.split()).upper()
         self.__S  = sexo
-        self.__registros: list[Registro] = [];
+        self.__registros: list[Registro] = []
 
     @property
     def nome(self) -> str:

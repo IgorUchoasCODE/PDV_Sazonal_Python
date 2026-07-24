@@ -18,6 +18,11 @@ class InventoryFlowManager:
     # ========== CADASTROS ==========
 
     @staticmethod
+    def criar_unidade_medida(descricao: str, fatorConjunto: int = None) -> int:
+        """Cadastra uma nova unidade de medida no banco de dados. Retorna o ID."""
+        return DB.INSERT.UNIDADE_MEDIDA.executar(descricao, fatorConjunto)
+
+    @staticmethod
     def criar_produto(nome: str, diasDuraveis: int = 365, unidadeMedida: int = 1,
                       receita: bool = False, varejo: float = 0, atacado: float = 0,
                       promocao: float = 0) -> int:
@@ -382,27 +387,22 @@ class InventoryFlowManager:
         Retorna o custo unitário mais caro entre todas as notas de compra
         para um determinado produto.
         """
-        fluxos = DB.SELECT.FLUXO_ESTOQUE_POR_NOTA.buscar(id_produto)
-        if not fluxos:
-            # Fallback: busca diretamente
-            try:
-                from br.com.pdv.src.BDD.bancodb import BancoDB
-                with BancoDB.obter_conexao() as conn:
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        SELECT MAX(valorUnidario) as custo_max
-                        FROM fluxoEstoque
-                        WHERE id_produto = ? AND id_tipoNota = 1
-                    """, (id_produto,))
-                    row = cursor.fetchone()
-                    if row and row["custo_max"]:
-                        return row["custo_max"]
-            except Exception:
-                pass
-            return 0
+        try:
+            from br.com.pdv.src.BDD.bancodb import BancoDB
+            with BancoDB.obter_conexao() as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT MAX(valorUnidario) as custo_max
+                    FROM fluxoEstoque
+                    WHERE id_produto = ? AND id_tipoNota = 1
+                """, (id_produto,))
+                row = cursor.fetchone()
+                if row and row["custo_max"] is not None:
+                    return float(row["custo_max"])
+        except Exception:
+            pass
+        return 0
 
-        custos = [f.get("valorUnidario", 0) for f in fluxos]
-        return max(custos) if custos else 0
 
     # ========== CONSULTAS AUXILIARES ==========
 

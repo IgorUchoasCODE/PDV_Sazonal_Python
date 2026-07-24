@@ -1,5 +1,6 @@
 from typing import Dict, Any, Union
 
+
 class IdClassFactory:
     """
     Fábrica responsável por gerar IDs.
@@ -85,9 +86,4 @@ produtos_notas = {
     }    
 
 
-print(IdClassFactory.gerar_id_produto_nota(
-    produtos_notas,
-    {"id":"77","nome":"coca cola","tipo":"refrigerante"},
-    1,
-    ))
 

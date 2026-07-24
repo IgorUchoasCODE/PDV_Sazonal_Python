@@ -58,10 +58,10 @@ class NotaVenda(ComportamentoNota):
         # Flag de salvamento
         self.__salvo = False
 
-    def adicionarProduto(self, produto: Produto, id_nota_origem: int = None) -> bool:
+    def adicionarProduto(self, produto: Produto, id_nota_origem: Union[int, dict] = None) -> bool:
         """
         Adiciona um produto à nota de venda.
-        id_nota_origem: ID da nota de compra de onde o produto está saindo.
+        id_nota_origem: ID da nota de compra ou dict de IDs para ingredientes de produtos compostos.
         """
         p = produto
         lp = self.__produtos
@@ -70,8 +70,8 @@ class NotaVenda(ComportamentoNota):
             if not isinstance(p, Produto):
                 raise ValueError("O produto deve ser uma instância de Produto")
 
-            if "Receita" in p.getDados().keys():
-                raise ValueError("Produto composto não pode ser vendido diretamente")
+            if "Receita" in p.getDados().keys() and "valorTotalVendas" not in p.getDados().keys():
+                raise ValueError("Produto composto não pode ser vendido diretamente sem definir valores de venda")
 
             key = IdClassFactory.gerar_id_produto_nota(lp, p.getDados(), 2)
 

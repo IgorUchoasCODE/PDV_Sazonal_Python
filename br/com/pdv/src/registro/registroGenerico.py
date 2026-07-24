@@ -41,7 +41,7 @@ class RegistroGenerico(Enum):
         return valor
 
     @classmethod
-    def por_codigo(cls, codigo: int):
+    def por_codigo(cls, codigo: int) -> RegistroGenerico:
         """Retorna o RegistroGenerico pelo código do banco de dados."""
         for reg in cls:
             if reg.codigo == codigo:
@@ -49,7 +49,7 @@ class RegistroGenerico(Enum):
         raise ValueError(f"Tipo de registro com código {codigo} não encontrado.")
 
     @classmethod
-    def por_nome(cls, nome: str):
+    def por_nome(cls, nome: str)-> RegistroGenerico:
         """Retorna o RegistroGenerico pelo nome/descrição."""
         nome_upper = nome.strip().upper()
         for reg in cls:
