@@ -194,6 +194,38 @@ class SELECT(QueryBase):
         from "fluxoEstoque" as fe
         WHERE "id_tipoNota" = 5;"""
 
+
+
+    TODAS_NOTAS_COMPRA_ID = """SELECT
+    fe.id_fluxo_nota
+    FROM "fluxoEstoque" AS fe
+    WHERE fe."id_tipoNota" = 1
+    ORDER BY fe."data" ASC;"""
+
+    TODAS_NOTAS_VENDA_ID = """SELECT DISTINCT
+    fe.id_fluxo_nota
+    FROM "fluxoEstoque" AS fe
+    WHERE fe."id_tipoNota" = 2
+    ORDER BY fe."data" ASC;"""
+
+    TODAS_NOTAS_DEVOLUCAO_ID = """SELECT DISTINCT
+    fe.id_fluxo_nota
+    FROM "fluxoEstoque" AS fe
+    WHERE fe."id_tipoNota" = 3
+    ORDER BY fe."data" ASC;"""
+
+    TODAS_NOTAS_PERDA_ID = """SELECT DISTINCT
+    fe.id_fluxo_nota
+    FROM "fluxoEstoque" AS fe
+    WHERE fe."id_tipoNota" = 4
+    ORDER BY fe."data" ASC;"""
+
+    TODAS_NOTAS_COMPENSACAO_ID = """SELECT DISTINCT
+    fe.id_fluxo_nota
+    FROM "fluxoEstoque" AS fe
+    WHERE fe."id_tipoNota" = 5
+    ORDER BY fe."data" ASC;"""
+
     # Fornecedores e Clientes (via view entidade completa)
     FORNECEDORES_TODOS = "SELECT * FROM vw_entidade_completa WHERE fornecedor = 1"
     CLIENTES_TODOS = "SELECT * FROM vw_entidade_completa WHERE cliente = 1"
@@ -269,5 +301,5 @@ class DB:
 
 
 if __name__ == "__main__":
-    p =DB.SELECT.VW_PRODUTO_COMPLETO_POR_ID.buscar_um(3)
+    p =DB.SELECT.TODAS_NOTAS_COMPRA_ID.buscar()
     print(p)

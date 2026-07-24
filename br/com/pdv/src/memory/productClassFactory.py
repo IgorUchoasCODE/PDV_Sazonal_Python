@@ -1,5 +1,6 @@
 from br.com.pdv.src.produto.produto import Produto
 from br.com.pdv.src.produto.UnidadeMedida import UnidadeMedida, UnidadeConjunto
+from br.com.pdv.src.BDD.queryEnum import DB
 from typing import Union, Dict, Any
 
 class productClassFactory:
@@ -172,6 +173,158 @@ class productClassFactory:
             raise ValueError(f"Falha no teste: diasDuraveis incompatível. Esperado {instrucoes['diasDuraveis']}, obtido {dados['diasDuraveis']}")
         
         return produto
+
+    @classmethod
+    def salvar(cls, produto: Produto) -> int:
+        """
+        Recebe uma instância de Produto criada pela UI, persiste no banco de dados
+        e registra no cache de moldes da fábrica.
+
+        Retorna o ID gerado no banco, ou -1 em caso de falha.
+        """
+        try:
+            dados = produto.getDados(f=False)
+
+            # Determina se é composto (tem receita) ou simples
+            receita = dados.get("Receita")
+
+            # Obtém o id numérico da unidade de medida a partir da descrição
+            descricao_um = dados.get("UnidadeMedida", "UNIDADE")
+            todas_um = DB.SELECT.UNIDADE_MEDIDA_TODOS.buscar()
+            id_um = 1  # fallback padrão
+            for um_row in todas_um:
+                if um_row.get("descricao", "").upper() == descricao_um.upper():
+                    id_um = um_row["id"]
+                    break
+
+            id_gerado = DB.INSERT.PRODUTO.executar(
+                dados["nome"],
+                dados["diasDuraveis"],
+                id_um,
+                str(receita) if receita else None,
+                0, 0, 0  # varejo, atacado, promocao (preços de venda — definidos posteriormente)
+            )
+
+            # Se for composto, salva cada linha de receita
+            if receita and isinstance(receita, dict):
+                for id_ingrediente, qntdd in receita.items():
+                    DB.INSERT.RECEITA.executar(id_gerado, id_ingrediente, qntdd)
+
+            # Atualiza o cache de moldes
+            instrucoes_cache = {
+                "id": id_gerado,
+                "nome": dados["nome"],
+                "diasDuraveis": dados["diasDuraveis"],
+                "unidadeMedida": descricao_um,
+            }
+            if receita:
+                instrucoes_cache["receita"] = receita
+
+            cls.registrar_molde(str(id_gerado), instrucoes_cache)
+
+            print(f"[productClassFactory.salvar] Produto '{dados['nome']}' salvo com ID {id_gerado}.")
+            return id_gerado
+
+        except Exception as e:
+            print(f"[productClassFactory.salvar] Erro ao salvar produto: {e}")
+            return -1
+
+    @classmethod
+    def alterar(cls, id_produto: int, instrucoes: dict) -> Produto | None:
+        """
+        Altera dados cadastrais do produto no banco de dados, respeitando as regras de rastreabilidade.
+
+        Campos SEMPRE permitidos (não afetam notas existentes):
+          - nome         (str)  : novo nome do produto
+          - diasDuraveis (int)  : nova validade em dias
+
+        Campos CONDICIONALMENTE permitidos (apenas se o produto não tiver histórico contábil):
+          - unidadeMedida (str/UnidadeMedida) : nova unidade
+          - receita       (dict)              : nova receita de composição
+
+        Retorna a instância atualizada de Produto, ou None em caso de erro/bloqueio.
+        """
+        CAMPOS_LIVRES = {"nome", "diasDuraveis"}
+        CAMPOS_RASTREADOS = {"unidadeMedida", "receita"}
+
+        try:
+            # Verifica se o produto existe no banco
+            dados_db = DB.SELECT.VW_PRODUTO_COMPLETO_POR_ID.buscar_um(id_produto)
+            if not dados_db:
+                print(f"[productClassFactory.alterar] Produto ID {id_produto} não encontrado.")
+                return None
+
+            # Guarda de rastreabilidade: bloqueia campos sensíveis se o produto tiver histórico
+            campos_rastreados_solicitados = CAMPOS_RASTREADOS & instrucoes.keys()
+            if campos_rastreados_solicitados:
+                uso_em_notas = DB.SELECT.FLUXO_ESTOQUE_POR_NOTA.buscar(id_produto)
+                # Verifica por fluxoEstoque com id_produto diretamente
+                from br.com.pdv.src.BDD.bancodb import BancoDB
+                with BancoDB.obter_conexao() as conn:
+                    cur = conn.cursor()
+                    cur.execute(
+                        "SELECT COUNT(*) as total FROM fluxoEstoque WHERE id_produto = ?",
+                        (id_produto,)
+                    )
+                    row = cur.fetchone()
+                    total_em_notas = dict(row).get("total", 0) if row else 0
+
+                if total_em_notas > 0:
+                    print(
+                        f"[productClassFactory.alterar] BLOQUEADO: produto ID {id_produto} "
+                        f"já possui {total_em_notas} registro(s) em notas contábeis. "
+                        f"Campos {campos_rastreados_solicitados} não podem ser alterados."
+                    )
+                    return None
+
+            # Prepara os valores a atualizar (parte dos valores vêm do banco, parte das instruções)
+            novo_nome       = instrucoes.get("nome",         dados_db["nome"])
+            novo_dias       = instrucoes.get("diasDuraveis", dados_db["diasDuraveis"])
+
+            # Resolve nova unidade de medida (caso permitido)
+            nova_um_str = dados_db.get("unidade_descricao") or dados_db.get("unidadeMedida", "UNIDADE")
+            nova_um_id  = dados_db.get("unidadeMedida")  # id numérico armazenado no banco
+
+            if "unidadeMedida" in instrucoes:
+                nova_um_str = str(instrucoes["unidadeMedida"])
+                todas_um = DB.SELECT.UNIDADE_MEDIDA_TODOS.buscar()
+                for um_row in todas_um:
+                    if um_row.get("descricao", "").upper() == nova_um_str.upper():
+                        nova_um_id = um_row["id"]
+                        break
+
+            nova_receita = instrucoes.get("receita", dados_db.get("receita"))
+
+            # Executa UPDATE no banco
+            DB.UPDATE.PRODUTO.executar(
+                novo_nome,
+                novo_dias,
+                nova_um_id,
+                str(nova_receita) if nova_receita else None,
+                dados_db.get("varejo", 0),
+                dados_db.get("atacado", 0),
+                dados_db.get("promocao", 0),
+                id_produto
+            )
+
+            # Se a receita foi alterada, atualiza as linhas de ingredientes
+            if "receita" in instrucoes and isinstance(instrucoes["receita"], dict):
+                DB.DELETE.RECEITA_POR_PRODUTO.executar(id_produto)
+                for id_ingrediente, qntdd in instrucoes["receita"].items():
+                    DB.INSERT.RECEITA.executar(id_produto, id_ingrediente, qntdd)
+
+            # Invalida o cache e re-fabrica
+            if str(id_produto) in cls._moldes:
+                del cls._moldes[str(id_produto)]
+
+            produto_atualizado = cls.fabricar_do_banco(id_produto)
+            print(f"[productClassFactory.alterar] Produto ID {id_produto} atualizado com sucesso.")
+            return produto_atualizado
+
+        except Exception as e:
+            print(f"[productClassFactory.alterar] Erro ao alterar produto ID {id_produto}: {e}")
+            return None
+
 
 # Alias para compatibilidade com importações em PascalCase
 ProductClassFactory = productClassFactory

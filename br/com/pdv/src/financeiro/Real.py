@@ -61,9 +61,9 @@ class MoedaReal:
         
         valor_final = int(resultado.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
         
-        # Opcional: Proteção contra custo zero se for muito menor que a proporção
+        # Permite custo zero se for muito menor que a proporção, para não travar a fabricação
         if valor_final == 0 and valor_milhar > 0:
-            raise ValueError(f"O valor {valor_milhar} é pequeno demais para a proporção {proporcao}, resultando em custo zero.")
+            valor_final = 0
             
         return valor_final
 
