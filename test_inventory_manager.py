@@ -36,8 +36,8 @@ def testar_fluxo_movimentacao_estoque():
         return
 
     id_produto = 1
-    id_fornecedor = 2
-    id_cliente = 1
+    id_fornecedor = 3   # Empresa Alfa Ltda
+    id_cliente = 1      # NAO INFORMADO (cliente padrão)
 
     exibir_estado_produto(id_produto, "ESTADO INICIAL DO PRODUTO")
 

@@ -400,10 +400,11 @@ class InventoryManager:
                 produto.insertPropertValue(valorUnidario=val_unit, quantidade=qtd)
                 notaCompra.adicionarProduto(produto)
 
-                # Persiste no fluxo de estoque
+                # Persiste no fluxo de estoque (id_notaOrigem = auto-referência: compra de si mesma)
                 dados_prod = produto.getDados(f=False)
                 DB.INSERT.FLUXO_ESTOQUE.executar(
-                    1, id_nota, id_prod,
+                    id_nota,   # id_notaOrigem = própria nota de compra (sem NULL)
+                    id_nota, 1, id_prod,
                     dados_prod.get("quantidadeEntrada", qtd),
                     dados_prod.get("valorUnitario", val_unit),
                     dados_prod.get("valorTotalLucro", 0),
@@ -481,39 +482,72 @@ class InventoryManager:
                 id_prod_str = str(id_prod)
                 receita = produto.getDados().get("Receita")
 
-                # ── Rastreabilidade FIFO ──────────────────────────────
                 if receita and isinstance(receita, dict):
+                    # ── PRODUTO COMPOSTO ─────────────────────────────────
+                    # Consome FIFO de cada ingrediente e persiste N linhas no banco
                     mapa_origem: dict = {}
                     custo_total_comp = 0.0
                     for id_ingr, qtd_por_un in receita.items():
                         qtd_ingr_total = qtd * qtd_por_un
-                        rastro = cls._consumir_fifo_interno(str(id_ingr), qtd_ingr_total)
-                        if rastro:
-                            mapa_origem[id_ingr] = rastro[0][0].split(".")[1]  # id da nota de compra do 1º lote
+                        rastro_ingr = cls._consumir_fifo_interno(str(id_ingr), qtd_ingr_total)
                         custo_total_comp += cls._get_custo_medio(str(id_ingr)) * qtd_por_un
 
+                        if rastro_ingr:
+                            mapa_origem[id_ingr] = int(rastro_ingr[0][0].split(".")[1])
+                            for idx_lote, qtd_consumida in rastro_ingr:
+                                id_nota_orig_lote = int(idx_lote.split(".")[1])
+                                DB.INSERT.FLUXO_ESTOQUE.executar(
+                                    id_nota_orig_lote,      # id_notaOrigem = nota de compra do lote
+                                    id_nota, 2, int(id_ingr),
+                                    qtd_consumida, val_venda, 0,
+                                    str(data_emissao)
+                                )
+                        else:
+                            # Sem lote rastreável: auto-referência para evitar NULL
+                            DB.INSERT.FLUXO_ESTOQUE.executar(
+                                id_nota,                    # auto-referência
+                                id_nota, 2, int(id_ingr),
+                                qtd_ingr_total, val_venda, 0,
+                                str(data_emissao)
+                            )
+
+                    # Registra produto composto na nota em memória
                     produto.insertPropertValue(valorUnidario=custo_total_comp, quantidade=qtd)
                     produto.vender(quantidadeVendas=qtd, valorVenda=val_venda)
                     notaVenda.adicionarProduto(produto, id_nota_origem=mapa_origem or None)
-                    id_nota_origem_db = None  # composto → sem nota única de origem
+
                 else:
+                    # ── PRODUTO SIMPLES ──────────────────────────────────
+                    # Consome FIFO e persiste N linhas no banco (uma por lote de origem)
                     rastro = cls._consumir_fifo_interno(id_prod_str, qtd)
                     custo_med = cls._get_custo_medio(id_prod_str)
-                    id_nota_origem_db = int(rastro[0][0].split(".")[1]) if rastro else None
+                    id_nota_origem_mem = int(rastro[0][0].split(".")[1]) if rastro else None
 
                     produto.insertPropertValue(valorUnidario=custo_med, quantidade=qtd)
                     produto.vender(quantidadeVendas=qtd, valorVenda=val_venda)
-                    notaVenda.adicionarProduto(produto, id_nota_origem=id_nota_origem_db)
+                    notaVenda.adicionarProduto(produto, id_nota_origem=id_nota_origem_mem)
 
-                # Persiste fluxo de estoque
-                dados_prod = produto.getDados(f=False)
-                DB.INSERT.FLUXO_ESTOQUE.executar(
-                    2, id_nota, id_prod,
-                    dados_prod.get("quantidadeEntrada", qtd),
-                    dados_prod.get("valorUnitario", val_venda),
-                    dados_prod.get("valorTotalLucro", 0),
-                    str(data_emissao)
-                )
+                    dados_prod = produto.getDados(f=False)
+                    val_total_lucro = dados_prod.get("valorTotalLucro", 0) or 0
+
+                    if rastro:
+                        for idx_lote, qtd_consumida in rastro:
+                            id_nota_orig_lote = int(idx_lote.split(".")[1])
+                            # Fraciona o lucro proporcionalmente à quantidade consumida
+                            lucro_frac = round((qtd_consumida / qtd) * val_total_lucro, 4) if qtd > 0 else 0
+                            DB.INSERT.FLUXO_ESTOQUE.executar(
+                                id_nota_orig_lote,          # id_notaOrigem = nota de compra do lote
+                                id_nota, 2, id_prod,
+                                qtd_consumida, val_venda, lucro_frac,
+                                str(data_emissao)
+                            )
+                    else:
+                        # Sem lote rastreável: auto-referência para evitar NULL
+                        DB.INSERT.FLUXO_ESTOQUE.executar(
+                            id_nota,                        # auto-referência
+                            id_nota, 2, id_prod,
+                            qtd, val_venda, 0, str(data_emissao)
+                        )
 
             notaVenda.salvar()
             cls._NotasVendas.add(notaVenda)
@@ -584,7 +618,8 @@ class InventoryManager:
                 notaPerda.adicionarProduto(produto)
 
                 DB.INSERT.FLUXO_ESTOQUE.executar(
-                    id_tipo_nota, id_nota, id_prod, qtd, val_unit, 0, str(data_emissao)
+                    id_nota_orig if id_nota_orig else id_nota,  # id_notaOrigem: origem ou auto-ref
+                    id_nota, id_tipo_nota, id_prod, qtd, val_unit, 0, str(data_emissao)
                 )
 
             notaPerda.salvar()
@@ -665,13 +700,15 @@ class InventoryManager:
                         ingr.insertPropertValue(valorUnidario=custo_ingr, quantidade=qtd_dev)
                         notaDev.adicionarProduto(ingr)
                         DB.INSERT.FLUXO_ESTOQUE.executar(
-                            3, id_nota, id_ingr, qtd_dev, custo_ingr, 0, str(data_emissao)
+                            id_nota_venda,  # id_notaOrigem = nota de venda devolvida
+                            id_nota, 3, id_ingr, qtd_dev, custo_ingr, 0, str(data_emissao)
                         )
                 else:
                     produto.insertPropertValue(valorUnidario=val_unit, quantidade=qtd)
                     notaDev.adicionarProduto(produto)
                     DB.INSERT.FLUXO_ESTOQUE.executar(
-                        3, id_nota, id_prod, qtd, val_unit, 0, str(data_emissao)
+                        id_nota_venda,  # id_notaOrigem = nota de venda devolvida
+                        id_nota, 3, id_prod, qtd, val_unit, 0, str(data_emissao)
                     )
 
             notaDev.salvar()
@@ -733,7 +770,8 @@ class InventoryManager:
                 produto.insertPropertValue(valorUnidario=val_unit, quantidade=qtd)
                 notaComp.adicionarProduto(produto)
                 DB.INSERT.FLUXO_ESTOQUE.executar(
-                    5, id_nota, id_prod, qtd, val_unit, 0, str(data_emissao)
+                    id_perda_orig,  # id_notaOrigem = nota da perda que originou a compensação
+                    id_nota, 5, id_prod, qtd, val_unit, 0, str(data_emissao)
                 )
 
             notaComp.salvar()

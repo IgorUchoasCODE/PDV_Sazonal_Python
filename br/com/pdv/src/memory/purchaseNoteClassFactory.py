@@ -42,8 +42,8 @@ class PurchaseNoteClassFactory:
             return None
 
         
-        if notaCompra.salvar():
-            cls.__purchaseNote[id]= notaCompra
+        if notaCompra and notaCompra.salvar():
+            cls.__purchaseNote[id] = notaCompra
             return notaCompra
         else:
             return None

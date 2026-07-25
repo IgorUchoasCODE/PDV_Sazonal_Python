@@ -29,6 +29,9 @@ class RegistroGenerico(Enum):
     def codigo(self) -> int:
         return self.__codigo
 
+    def getCodigo(self) -> int:
+        return self.__codigo
+
     def validar(self, valor: str) -> bool:
         """Sem validação de regra — aceita qualquer string não vazia."""
         if not isinstance(valor, str):

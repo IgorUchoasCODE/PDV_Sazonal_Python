@@ -151,8 +151,9 @@ class BancoDB:
 
             CREATE TABLE IF NOT EXISTS "fluxoEstoque"(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                id_tipoNota INTEGER NOT NULL,
+                id_notaOrigem INTEGER NOT NULL REFERENCES "fluxosNotasEstoque" (id) ON DELETE CASCADE,
                 id_fluxo_nota INTEGER NOT NULL,
+                id_tipoNota INTEGER NOT NULL,
                 id_produto INTEGER NOT NULL,
                 quantidade DECIMAL(1000,3) NOT NULL,
                 valorUnidario DECIMAL(10,3) NOT NULL,
@@ -321,8 +322,20 @@ class BancoDB:
             LEFT JOIN empresas emp ON e.id_empresa = emp.id;
 
             CREATE VIEW IF NOT EXISTS vw_fluxo_estoque_completo AS
-            SELECT fe.*, p.nome as produto_nome, tn.descricao as tipo_nota,
-                   fn.id_representante, fn.data_vencimento, fn.id_notaOrigem
+            SELECT fe.id,
+                   fe.id_notaOrigem,
+                   fe.id_fluxo_nota,
+                   fe.id_tipoNota,
+                   fe.id_produto,
+                   fe.quantidade,
+                   fe.valorUnidario,
+                   fe.lucroTotal,
+                   fe.data,
+                   p.nome as produto_nome,
+                   tn.descricao as tipo_nota,
+                   fn.id_representante,
+                   fn.data_vencimento,
+                   fn.id_notaOrigem as id_notaOrigem_cabecalho
             FROM fluxoEstoque fe
             JOIN produto p ON fe.id_produto = p.id
             JOIN tiposNotas tn ON fe.id_tipoNota = tn.id

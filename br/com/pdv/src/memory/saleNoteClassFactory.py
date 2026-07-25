@@ -58,10 +58,10 @@ class SaleNoteClassFactory:
     @classmethod
     def reconstruir_produtos(cls, notaVenda: NotaVenda, id_nota: int) -> bool:
         """
-        Auxilia na reconstrução dos produtos em uma nota de venda,
-        suportando produtos simples e compostos (com receita).
-        Mantém a referência da classe PurchaseNoteClassFactory através do id_notaOrigem
-        dos produtos e de seus ingredientes para retornar a NotaVenda construída.
+        Reconstrói os produtos em uma nota de venda.
+        Como a venda agora gera N linhas no fluxoEstoque (uma por lote FIFO de origem),
+        agrupa as linhas pelo id_produto antes de criar os objetos Produto.
+        Lê id_notaOrigem diretamente do item (fe.id_notaOrigem) — sem NULL.
         """
         try:
             itens = DB.SELECT.VW_FLUXO_ESTOQUE_POR_NOTA.buscar(id_nota)
@@ -71,48 +71,60 @@ class SaleNoteClassFactory:
             if not itens:
                 return False
 
+            # ── Agrega linhas pelo id_produto (múltiplas origens FIFO) ──
+            from collections import defaultdict
+            grupos: dict = defaultdict(lambda: {
+                "quantidade": 0.0,
+                "custo_total": 0.0,
+                "val_venda": 0.0,
+                "origens": []
+            })
             for ntv in itens:
                 id_produto = ntv["id_produto"]
-                quantidade = ntv["quantidade"]
-                valor_unidario = ntv["valorUnidario"]
+                qtd_linha = ntv["quantidade"]
+                val_unit = ntv["valorUnidario"]
+                id_nota_origem = ntv.get("id_notaOrigem")  # Agora vem direto do item
 
-                # Obtém o id_notaOrigem do item ou do cabeçalho da nota
-                id_nota_origem = ntv.get("id_notaOrigem")
-                if id_nota_origem is None:
-                    nota_hdr = DB.SELECT.FLUXO_NOTA_ESTOQUE_POR_ID.buscar_um(id_nota)
-                    if nota_hdr:
-                        id_nota_origem = nota_hdr.get("id_notaOrigem")
+                g = grupos[id_produto]
+                g["quantidade"] += qtd_linha
+                g["custo_total"] += 0  # custo será recalculado via _obter_custo_ingrediente
+                g["val_venda"] = val_unit  # preço de venda é igual para todas as linhas do mesmo produto
+                if id_nota_origem and id_nota_origem not in g["origens"]:
+                    g["origens"].append(id_nota_origem)
+                    if id_nota_origem != id_nota:
+                        PurchaseNoteClassFactory.fabricar(id_nota_origem)
 
-                # Se houver id_notaOrigem (nota de compra), instancia/referencia a NotaCompra via PurchaseNoteClassFactory
-                if id_nota_origem is not None and id_nota_origem > 0:
-                    PurchaseNoteClassFactory.fabricar(id_nota_origem)
-
-                # Fabricar a instância de Produto
+            # ── Cria um Produto por grupo ──
+            for id_produto, g in grupos.items():
                 produto = ProductClassFactory.testar_e_fabricar(id_produto)
+                if not produto:
+                    continue
 
-                # Se o produto for composto (tiver receita), busca e referencia as notas de compra de cada ingrediente
                 receita = produto.getDados().get("Receita")
-                custo_unitario_ingredientes = 0.0
+                custo_unitario = 0.0
+
                 if receita and isinstance(receita, dict):
                     mapa_ingredientes = {}
                     for id_ingrediente, qtd_por_unid in receita.items():
                         id_compra_ing = cls._referenciar_nota_compra_ingrediente(id_ingrediente, id_nota)
                         if id_compra_ing:
                             mapa_ingredientes[id_ingrediente] = id_compra_ing
-                        custo_unitario_ingredientes += cls._obter_custo_ingrediente(id_ingrediente) * qtd_por_unid
-                    if mapa_ingredientes:
-                        id_nota_origem = mapa_ingredientes
+                        custo_unitario += cls._obter_custo_ingrediente(id_ingrediente) * qtd_por_unid
+                    id_nota_origem_final = mapa_ingredientes if mapa_ingredientes else g["origens"]
                 else:
-                    custo_unitario_ingredientes = cls._obter_custo_ingrediente(id_produto)
-                    if id_nota_origem is not None and isinstance(id_nota_origem, int) and id_nota_origem > 0:
-                        PurchaseNoteClassFactory.fabricar(id_nota_origem)
+                    custo_unitario = cls._obter_custo_ingrediente(id_produto)
+                    origens = g["origens"]
+                    if len(origens) == 1:
+                        id_nota_origem_final = origens[0]
+                    elif len(origens) > 1:
+                        # Múltiplas origens FIFO — retorna dict {id_origem: id_origem}
+                        id_nota_origem_final = {o: o for o in origens}
+                    else:
+                        id_nota_origem_final = None
 
-                # Configura custo unitário e registra a venda
-                produto.insertPropertValue(valorUnidario=custo_unitario_ingredientes, quantidade=quantidade)
-                produto.vender(quantidadeVendas=quantidade, valorVenda=valor_unidario)
-
-                # Adiciona o produto na nota de venda vinculando o id da nota de origem de compra
-                notaVenda.adicionarProduto(produto, id_nota_origem=id_nota_origem)
+                produto.insertPropertValue(valorUnidario=custo_unitario, quantidade=g["quantidade"])
+                produto.vender(quantidadeVendas=g["quantidade"], valorVenda=g["val_venda"])
+                notaVenda.adicionarProduto(produto, id_nota_origem=id_nota_origem_final)
 
             return True
         except Exception as e:

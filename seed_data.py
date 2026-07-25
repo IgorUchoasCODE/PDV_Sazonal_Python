@@ -236,8 +236,8 @@ def registrar_compra(cur, conn, id_fornecedor, id_produto, qtd, custo, data_str)
     conn.commit()
     id_nota = cur.lastrowid
     cur.execute(
-        "INSERT INTO fluxoEstoque (id_tipoNota, id_fluxo_nota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (1, ?, ?, ?, ?, 0, ?)",
-        (id_nota, id_produto, qtd, custo, data_str)
+        "INSERT INTO fluxoEstoque (id_notaOrigem, id_fluxo_nota, id_tipoNota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (?, ?, 1, ?, ?, ?, 0, ?)",
+        (id_nota, id_nota, id_produto, qtd, custo, data_str)  # id_notaOrigem = auto-referência
     )
     conn.commit()
     return id_nota
@@ -251,9 +251,11 @@ def registrar_venda_simples(cur, conn, id_cliente, id_produto, qtd, preco_venda,
     )
     conn.commit()
     id_nota = cur.lastrowid
+    # id_notaOrigem no item = nota de compra de origem (ou auto-referência se não informada)
+    id_nota_origem_item = id_nota_origem if id_nota_origem else id_nota
     cur.execute(
-        "INSERT INTO fluxoEstoque (id_tipoNota, id_fluxo_nota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (2, ?, ?, ?, ?, ?, ?)",
-        (id_nota, id_produto, qtd, preco_venda, lucro, data_str)
+        "INSERT INTO fluxoEstoque (id_notaOrigem, id_fluxo_nota, id_tipoNota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (?, ?, 2, ?, ?, ?, ?, ?)",
+        (id_nota_origem_item, id_nota, id_produto, qtd, preco_venda, lucro, data_str)
     )
     conn.commit()
     # Pagamento da venda simples
@@ -314,8 +316,8 @@ def registrar_venda_composto(cur, conn, id_cliente, id_produto, qtd, preco_venda
     id_nota_produto = cur.lastrowid
 
     cur.execute(
-        "INSERT INTO fluxoEstoque (id_tipoNota, id_fluxo_nota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (2, ?, ?, ?, ?, ?, ?)",
-        (id_nota_produto, id_produto, qtd, preco_venda, lucro, data_str)
+        "INSERT INTO fluxoEstoque (id_notaOrigem, id_fluxo_nota, id_tipoNota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (?, ?, 2, ?, ?, ?, ?, ?)",
+        (id_nota_origem if id_nota_origem else id_nota_produto, id_nota_produto, id_produto, qtd, preco_venda, lucro, data_str)
     )
     conn.commit()
 
@@ -334,8 +336,9 @@ def registrar_venda_composto(cur, conn, id_cliente, id_produto, qtd, preco_venda
         id_nota_ingr = cur.lastrowid
 
         cur.execute(
-            "INSERT INTO fluxoEstoque (id_tipoNota, id_fluxo_nota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (2, ?, ?, ?, ?, 0, ?)",
-            (id_nota_ingr, ingr["id_ingrediente"], qtd * ingr["qntdd"], ingr["custo"], data_str)
+            "INSERT INTO fluxoEstoque (id_notaOrigem, id_fluxo_nota, id_tipoNota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (?, ?, 2, ?, ?, 0, 0, ?)",
+            (id_nota_compra_ingr if id_nota_compra_ingr else id_nota_ingr,
+             id_nota_ingr, ingr["id_ingrediente"], qtd * ingr["qntdd"], data_str)
         )
         conn.commit()
 

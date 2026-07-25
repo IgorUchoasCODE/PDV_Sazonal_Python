@@ -62,7 +62,7 @@ class INSERT(QueryBase):
     REGISTRO = "INSERT INTO registro (id_tipos_registros, id_entidade, registro) VALUES (?, ?, ?)"
     FLUXO_NOTA_ESTOQUE = "INSERT INTO fluxosNotasEstoque (id_tipoNota, id_representante, id_notaOrigem, data_vencimento) VALUES (?, ?, ?, ?)"
     FLUXO_PAGAMENTO_NOTA = "INSERT INTO fluxoPagamentoNotas (id_fluxo_nota, id_forma_pagamento, valor, data_pagamento) VALUES (?, ?, ?, ?)"
-    FLUXO_ESTOQUE = "INSERT INTO fluxoEstoque (id_tipoNota, id_fluxo_nota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    FLUXO_ESTOQUE = "INSERT INTO fluxoEstoque (id_notaOrigem, id_fluxo_nota, id_tipoNota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     TAXA_PAGAMENTO = "INSERT INTO taxasPagamento (id_formaPagamento, descricao, taxa) VALUES (?, ?, ?)"
     SNAPSHOT_SAZONAL = """INSERT INTO snapshot_sazonal 
         (id_fluxo_nota, data_registro, temperatura_atual, temperatura_min_semana, temperatura_max_semana,
@@ -98,6 +98,9 @@ class SELECT(QueryBase):
     
     FLUXO_PAGAMENTO_POR_NOTA = "SELECT * FROM fluxoPagamentoNotas WHERE id_fluxo_nota = ?"
     FLUXO_ESTOQUE_POR_NOTA = "SELECT * FROM fluxoEstoque WHERE id_fluxo_nota = ?"
+    FLUXO_ESTOQUE_ORIGENS_POR_NOTA = """SELECT fe.id_notaOrigem, fe.id_produto, SUM(fe.quantidade) as quantidade_total
+        FROM fluxoEstoque fe WHERE fe.id_fluxo_nota = ? GROUP BY fe.id_notaOrigem, fe.id_produto
+        ORDER BY fe.id_notaOrigem"""
     
     TIPO_NOTA_TODOS = "SELECT * FROM tiposNotas"
     FORMA_PAGAMENTO_TODOS = "SELECT * FROM formaPagamento"
