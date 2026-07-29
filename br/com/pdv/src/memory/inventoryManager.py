@@ -1478,7 +1478,7 @@ class InventoryManager:
                 if is_venda:
                     bloco_t["total_vendas"] += vol
                     soma_temp_vendas += temp * vol
-                    qtd_temp_vendas += 1
+                    qtd_temp_vendas += vol
                 else:
                     bloco_t["total_perdas"] += vol
 

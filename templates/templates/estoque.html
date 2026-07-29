@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Estoque & FIFO — Sazonalizei{% endblock %}
+{% block page_title %}Gestão de Estoque (InventoryManager & Fechamento de Turno){% endblock %}
+
+{% block content %}
+<!-- CARDS DE CONTAGEM: PRODUTOS COMPOSTOS VS SIMPLES E LOTES FIFO -->
+<div class="grid-metrics">
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>PRODUTOS SIMPLES (INSUMOS)</span>
+            <span>🥩</span>
+        </div>
+        <div class="metric-value text-blue">{{ total_simples }}</div>
+        <div class="metric-subtitle">Matéria-prima e insumos diretos</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>PRODUTOS COMPOSTOS (RECEITA)</span>
+            <span>🍔</span>
+        </div>
+        <div class="metric-value text-emerald">{{ total_compostos }}</div>
+        <div class="metric-subtitle">Itens fabricados com Ficha Técnica</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>LOTES FIFO EM MEMÓRIA</span>
+            <span>🏷️</span>
+        </div>
+        <div class="metric-value text-amber">{{ lotes_fifo|length }}</div>
+        <div class="metric-subtitle">Lotes rastreáveis ativos (_mapaEstoque)</div>
+    </div>
+
+    <div class="metric-card"
+        style="background: linear-gradient(135deg, #ffffff 70%, #eff6ff 100%); border: 2.5px solid var(--brand-blue-main);">
+        <div class="metric-header">
+            <span>FECHAMENTO DE EXPEDIENTE</span>
+            <span>📑</span>
+        </div>
+        <button class="btn btn-emerald" style="width: 100%; margin-top: 0.5rem;" onclick="abrirModalFimTurno()">
+            🌙 Vendas Fim de Turno (Lote)
+        </button>
+    </div>
+</div>
+
+<!-- 📦 SEÇÃO DE LOTES FIFO EM MEMÓRIA (InventoryManager _mapaEstoque) -->
+<div class="metric-card" style="margin-bottom: 2rem;">
+    <h3 style="margin-bottom: 0.75rem; color: var(--brand-blue-dark);">
+        🏷️ Lotes Rastreáveis em Memória (Algoritmo FIFO — InventoryManager._mapaEstoque)
+    </h3>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Exibe a fila de consumo por prioridade de chegada (primeiro que entra, primeiro que sai).
+    </p>
+
+    <div class="table-container" style="max-height: 280px; overflow-y: auto;">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>Índice do Lote</th>
+                    <th>Nota Origem</th>
+                    <th>Cód Produto</th>
+                    <th>Qtd Inicial</th>
+                    <th>Qtd Disponível</th>
+                    <th>Custo Unit (R$)</th>
+                    <th>Data Entrada</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for lote in lotes_fifo %}
+                <tr>
+                    <td><span class="badge badge-purple">{{ lote.idx_lote }}</span></td>
+                    <td>Nota Compra #{{ lote.id_nota }}</td>
+                    <td>Prod #{{ lote.id_produto }}</td>
+                    <td>{{ lote.qtd_inicial }} un</td>
+                    <td><strong class="text-emerald">{{ lote.qtd_disponivel }} un</strong></td>
+                    <td>R$ {{ lote.custo_unitario|floatformat:2 }}</td>
+                    <td>{{ lote.data_entrada }}</td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" style="text-align: center; color: var(--text-muted);">Nenhum lote ativo em
+                        estoque...</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- TABELAS DE COMPOSTOS VS SIMPLES E INDICAÇÃO SAZONAL -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+    <!-- Tabela Produtos Compostos (Ficha Técnica) -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">
+            🍔 Produtos Compostos (Com Ficha Técnica / Receita)
+        </h3>
+
+        <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Cód</th>
+                        <th>Produto Composto</th>
+                        <th>Status Receita</th>
+                        <th>Indicação Sazonal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in compostos %}
+                    <tr>
+                        <td>#{{ item.id }}</td>
+                        <td><strong>{{ item.nome }}</strong></td>
+                        <td><span class="badge badge-emerald">Ficha Técnica Ativa</span></td>
+                        <td>
+                            {% if item.estoque > 10 %}
+                            <span class="badge badge-green-status">🟢 Favorável ☀️</span>
+                            {% else %}
+                            <span class="badge badge-amber-status">🟡 Atenção 📅</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted);">Nenhum produto composto
+                            cadastrado...</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Tabela Produtos Simples (Insumos) -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">
+            📦 Produtos Simples (Estoque de Insumos Diretos)
+        </h3>
+
+        <div class="table-container" style="max-height: 380px; overflow-y: auto;">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Cód</th>
+                        <th>Insumo / Matéria-Prima</th>
+                        <th>Estoque</th>
+                        <th>Unidade</th>
+                        <th>Indicação Sazonal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in simples %}
+                    <tr>
+                        <td>#{{ item.id }}</td>
+                        <td><strong>{{ item.nome }}</strong></td>
+                        <td>
+                            <span
+                                class="badge {% if item.estoque > 10 %}badge-green-status{% else %}badge-amber-status{% endif %}">
+                                {{ item.estoque }}
+                            </span>
+                        </td>
+                        <td>{{ item.UnidadeMedida }}</td>
+                        <td>
+                            {% if item.estoque > 15 %}
+                            <span class="badge badge-green-status">🟢 Favorável ☀️</span>
+                            {% elif item.estoque > 0 %}
+                            <span class="badge badge-amber-status">🟡 Atenção 📅</span>
+                            {% else %}
+                            <span class="badge badge-red-status">🔴 Não Favorável 🌊</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- 🌙 MODAL DE FECHAMENTO DE EXPEDIENTE / VENDAS FIM DE TURNO -->
+<div id="modal-fim-turno" class="modal-overlay">
+    <div class="modal-box" style="max-width: 650px;">
+        <div class="modal-header">
+            <h3 style="color: var(--brand-blue-dark);">🌙 Registrar Vendas de Fim de Expediente (Baixa Acumulada em
+                Lote)</h3>
+            <button class="modal-close-btn" onclick="fecharModalFimTurno()">✕</button>
+        </div>
+
+        <form onsubmit="confirmarFimTurno(event)">
+            <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem;">
+                Informe os totais acumulados de vendas do turno para abater o estoque de insumos de uma só vez segundo o
+                algoritmo FIFO do InventoryManager.
+            </p>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Selecione o Produto
+                    Vendido no Turno:</label>
+                <select id="turno-produto" class="form-control" required>
+                    {% for p in catalogo %}
+                    <option value="{{ p.id }}">{{ p.nome }} (Estoque disponível: {{ p.estoque }} {{ p.UnidadeMedida }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Qtd Total Vendida no
+                        Turno:</label>
+                    <input type="number" id="turno-qtd" step="1" class="input-field" placeholder="Ex: 25" required>
+                </div>
+                <div>
+                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Preço de Venda
+                        Unitário (R$):</label>
+                    <input type="number" id="turno-preco" step="0.01" class="input-field" placeholder="Ex: 15.00"
+                        required>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-emerald" style="width: 100%;">
+                ✅ Confirmar Baixa em Lote do Turno (InventoryManager.insert_venda)
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function abrirModalFimTurno() {
+        document.getElementById('modal-fim-turno').classList.add('active');
+    }
+
+    function fecharModalFimTurno() {
+        document.getElementById('modal-fim-turno').classList.remove('active');
+    }
+
+    async function confirmarFimTurno(e) {
+        e.preventDefault();
+
+        const prodId = parseInt(document.getElementById('turno-produto').value);
+        const qtd = parseFloat(document.getElementById('turno-qtd').value);
+        const preco = parseFloat(document.getElementById('turno-preco').value);
+
+        const payload = {
+            id_cliente: null,
+            data: new Date().toISOString().split('T')[0],
+            produtos: [{ id: prodId, quantidade: qtd, valorVenda: preco }],
+            id_forma_pagamento: 1,
+            valor_pagamento: qtd * preco
+        };
+
+        try {
+            const resp = await fetch('/api/venda-fim-turno/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const res = await resp.json();
+
+            if (res.sucesso) {
+                alert(`✅ ${res.mensagem}`);
+                window.location.reload();
+            } else {
+                alert(`❌ Erro no fechamento: ${res.mensagem}`);
+            }
+        } catch (err) {
+            alert(`❌ Erro: ${err}`);
+        }
+    }
+</script>
+{% endblock %}

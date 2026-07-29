@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{% block title %}Clientes — Sazonalizei{% endblock %}
+{% block page_title %}Gestão de Clientes, Histórico de Compras e Saldo A Receber{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
+    <!-- Formulário de Cliente -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+            👤 Cadastrar Cliente
+        </h3>
+
+        <form id="form-cliente" onsubmit="cadastrarCliente(event)">
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Nome do Cliente:</label>
+                <input type="text" id="cli-nome" class="input-field" placeholder="Ex: Maria das Dores" required>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Sexo / Gênero:</label>
+                <select id="cli-sexo" class="form-control">
+                    <option value="MASCULINO">Masculino</option>
+                    <option value="FEMININO">Feminino</option>
+                    <option value="OUTRO">Outro / Não Informado</option>
+                </select>
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Telefone / WhatsApp:</label>
+                <input type="text" id="cli-telefone" class="input-field" placeholder="(92) 98888-1111">
+            </div>
+
+            <button type="submit" class="btn btn-emerald" style="width: 100%;">
+                👤 Salvar Cliente no Sistema
+            </button>
+        </form>
+    </div>
+
+    <!-- Tabela de Clientes com Histórico e Saldo a Receber -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">📋 Clientes & Saldo Pendente (Contas a Receber)</h3>
+        
+        <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Entidade ID</th>
+                        <th>Cliente</th>
+                        <th>Vendas Totais</th>
+                        <th>Recebido</th>
+                        <th>Saldo A Receber</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in clientes %}
+                    <tr>
+                        <td>#{{ c.id_entidade }}</td>
+                        <td><strong>{{ c.pessoa_nome|default:c.empresa_nome }}</strong></td>
+                        <td>R$ {{ c.extrato.resumo.total_vendas|default:"0.00"|floatformat:2 }}</td>
+                        <td>R$ {{ c.extrato.resumo.pagamentos_recebidos|default:"0.00"|floatformat:2 }}</td>
+                        <td class="text-emerald"><strong>R$ {{ c.extrato.resumo.contas_a_receber|default:"0.00"|floatformat:2 }}</strong></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: var(--text-muted);">Nenhum cliente cadastrado...</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function cadastrarCliente(e) {
+    e.preventDefault();
+    const nome = document.getElementById('cli-nome').value;
+    const sexo = document.getElementById('cli-sexo').value;
+    const tel = document.getElementById('cli-telefone').value;
+
+    const payload = {
+        tipo: "PESSOA",
+        nome: nome,
+        sexo: sexo,
+        is_cliente: true,
+        contatos: { "TELEFONE": tel }
+    };
+
+    try {
+        const resp = await fetch('/api/cadastrar-entidade/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const res = await resp.json();
+        if (res.sucesso) {
+            alert("✅ Cliente cadastrado com sucesso!");
+            window.location.reload();
+        } else {
+            alert(`❌ Erro: ${res.mensagem}`);
+        }
+    } catch (err) {
+        alert(`❌ Erro: ${err}`);
+    }
+}
+</script>
+{% endblock %}

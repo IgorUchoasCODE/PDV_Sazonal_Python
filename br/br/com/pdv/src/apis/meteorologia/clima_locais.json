@@ -1,0 +1,22 @@
+{
+  "CIDADES_AMAZONAS": {
+    "Manaus": {"lat": -3.1019, "lon": -60.0250},
+    "Parintins": {"lat": -2.6282, "lon": -56.7358},
+    "Itacoatiara": {"lat": -3.1386, "lon": -58.4442},
+    "Manacapuru": {"lat": -3.2953, "lon": -60.6206},
+    "Coari": {"lat": -4.0850, "lon": -63.1411},
+    "Tefé": {"lat": -3.3540, "lon": -64.7108},
+    "Tabatinga": {"lat": -4.2527, "lon": -69.9381},
+    "Maués": {"lat": -3.3831, "lon": -57.7186},
+    "São Gabriel da Cachoeira": {"lat": 0.1300, "lon": -67.0892},
+    "Humaitá": {"lat": -7.5053, "lon": -63.0319}
+  },
+  "RIOS_AMAZONAS": {
+    "Rio Negro (Manaus)": {"lat": -3.13, "lon": -60.02},
+    "Rio Solimões (Manacapuru)": {"lat": -3.30, "lon": -60.62},
+    "Rio Amazonas (Parintins)": {"lat": -2.63, "lon": -56.74},
+    "Rio Madeira (Humaitá)": {"lat": -7.51, "lon": -63.03},
+    "Rio Juruá (Tefé)": {"lat": -3.35, "lon": -64.71},
+    "Rio Purus (Lábrea)": {"lat": -7.26, "lon": -64.80}
+  }
+}

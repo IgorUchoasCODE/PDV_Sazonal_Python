@@ -26,11 +26,14 @@
 
     <div class="metric-card">
         <div class="metric-header">
-            <span>LOTES FIFO EM MEMÓRIA</span>
+            <span>LOTES FIFO EM ESTOQUE</span>
             <span>🏷️</span>
         </div>
         <div class="metric-value text-amber">{{ lotes_fifo|length }}</div>
-        <div class="metric-subtitle">Lotes rastreáveis ativos (_mapaEstoque)</div>
+        <div class="metric-subtitle">
+            <span style="display: block; margin-bottom: 0.3rem;">Lotes rastreáveis ativos</span>
+            <strong style="color: var(--brand-blue-dark);">Valor Total: R$ {{ valor_total_estoque|floatformat:2 }}</strong>
+        </div>
     </div>
 
     <div class="metric-card"
@@ -48,10 +51,10 @@
 <!-- 📦 SEÇÃO DE LOTES FIFO EM MEMÓRIA (InventoryManager _mapaEstoque) -->
 <div class="metric-card" style="margin-bottom: 2rem;">
     <h3 style="margin-bottom: 0.75rem; color: var(--brand-blue-dark);">
-        🏷️ Lotes Rastreáveis em Memória (Algoritmo FIFO — InventoryManager._mapaEstoque)
+        🏷️ Lotes Rastreáveis em Estoque (Algoritmo FIFO)
     </h3>
     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-        Exibe a fila de consumo por prioridade de chegada (primeiro que entra, primeiro que sai).
+        Exibe a fila de consumo por prioridade de chegada (primeiro que entra, primeiro que sai). Baseado nas datas de compras.
     </p>
 
     <div class="table-container" style="max-height: 280px; overflow-y: auto;">
@@ -60,27 +63,37 @@
                 <tr>
                     <th>Índice do Lote</th>
                     <th>Nota Origem</th>
-                    <th>Cód Produto</th>
+                    <th>Cód Prod</th>
                     <th>Qtd Inicial</th>
                     <th>Qtd Disponível</th>
-                    <th>Custo Unit (R$)</th>
-                    <th>Data Entrada</th>
+                    <th>Custo Un (R$)</th>
+                    <th>Entrada</th>
+                    <th>Vencimento</th>
                 </tr>
             </thead>
             <tbody>
                 {% for lote in lotes_fifo %}
-                <tr>
+                <tr class="{% if lote.is_vencido %}row-danger{% endif %}" title="{% if lote.is_vencido %}Lote Vencido! Risco de Perda.{% else %}Lote na validade. {{ lote.status_validade }}{% endif %}">
                     <td><span class="badge badge-purple">{{ lote.idx_lote }}</span></td>
-                    <td>Nota Compra #{{ lote.id_nota }}</td>
+                    <td><a href="#" style="color: var(--brand-blue);">#{{ lote.id_nota }}</a></td>
                     <td>Prod #{{ lote.id_produto }}</td>
-                    <td>{{ lote.qtd_inicial }} un</td>
-                    <td><strong class="text-emerald">{{ lote.qtd_disponivel }} un</strong></td>
+                    <td>{{ lote.qtd_inicial|floatformat:2 }} cx</td>
+                    <td>
+                        <strong class="{% if lote.is_vencido %}text-danger{% else %}text-emerald{% endif %}">
+                            {{ lote.qtd_disponivel|floatformat:2 }} cx
+                        </strong>
+                    </td>
                     <td>R$ {{ lote.custo_unitario|floatformat:2 }}</td>
-                    <td>{{ lote.data_entrada }}</td>
+                    <td>{{ lote.data_entrada|slice:":10" }}</td>
+                    <td>
+                        <span class="badge {% if lote.is_vencido %}badge-red-status{% elif 'CRÍTICO' in lote.status_validade %}badge-amber-status{% else %}badge-green-status{% endif %}">
+                            {{ lote.validade }} ({{ lote.status_validade }})
+                        </span>
+                    </td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="7" style="text-align: center; color: var(--text-muted);">Nenhum lote ativo em
+                    <td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum lote ativo em
                         estoque...</td>
                 </tr>
                 {% endfor %}
@@ -175,6 +188,74 @@
                 </tbody>
             </table>
         </div>
+        </div>
+    </div>
+</div>
+
+<!-- 🌳 ÁRVORE DE RASTREAMENTO (NOTAS DE COMPRA E SUAS VENDAS FILIADAS) -->
+<div class="metric-card" style="margin-top: 2rem;">
+    <h3 style="color: var(--brand-blue-dark); margin-bottom: 0.5rem;">🌳 Árvore de Rastreamento (Compras ➔ Vendas)</h3>
+    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Rastreabilidade FIFO: expanda as notas de compra para visualizar quais notas de venda foram atendidas por aquele lote. Exibe notas ativas e inativas (últimos 30 dias).
+    </p>
+
+    <!-- Barra de Ferramentas / Busca -->
+    <div style="display: flex; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap;">
+        <input type="text" id="busca-arvore" class="form-control" style="max-width: 300px; padding: 0.5rem; border-radius: 6px; border: 1px solid #ccc;" placeholder="Buscar Cód. Produto ou Nota...">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <input type="checkbox" id="filtro-ativas-arvore" checked>
+            <label for="filtro-ativas-arvore" style="font-size: 0.85rem; color: var(--text-main);">Mostrar apenas Lotes Ativos</label>
+        </div>
+    </div>
+
+    <!-- Container da Árvore -->
+    <div id="arvore-container" style="display: flex; flex-direction: column; gap: 0.8rem;">
+        {% for node in arvore_notas %}
+            <details class="arvore-node" data-ativo="{{ node.is_ativo|yesno:'true,false' }}" data-search="{{ node.id_nota }} {{ node.produto_nome|lower }} {{ node.id_produto }}">
+                <summary style="padding: 0.8rem; background: rgba(0, 80, 157, 0.05); border-radius: 8px; border: 1px solid rgba(0, 80, 157, 0.15); cursor: pointer; font-weight: 500; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span class="badge badge-purple" style="margin-right: 8px;">Nota #{{ node.id_nota }}</span>
+                        <strong style="color: var(--brand-blue-dark);">Prod #{{ node.id_produto }} - {{ node.produto_nome }}</strong>
+                        <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 10px;">Comprado em: {{ node.data_compra|slice:":10" }} | Qtd Inicial: {{ node.qtd_inicial }}cx</span>
+                    </div>
+                    <div>
+                        {% if node.is_ativo %}
+                            <span class="badge badge-green-status">Em Aberto ({{ node.qtd_disponivel }}cx disp.)</span>
+                        {% else %}
+                            <span class="badge" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">Lote Esgotado</span>
+                        {% endif %}
+                    </div>
+                </summary>
+                
+                <!-- Filhos (Notas de Venda) -->
+                <div style="padding: 1rem 1rem 1rem 2rem; border-left: 2px dashed #cbd5e1; margin-left: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                    {% if node.vendas %}
+                        {% for venda in node.vendas %}
+                            <div style="background: rgba(16, 185, 129, 0.05); padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); display: flex; justify-content: space-between;">
+                                <div>
+                                    <span style="font-size: 0.85rem; font-weight: 600; color: #065f46;">Nota Venda #{{ venda.id_nota_venda }}</span>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 8px;">Data: {{ venda.data_venda|slice:":10" }}</span>
+                                </div>
+                                <div style="font-size: 0.85rem; font-weight: 600;">
+                                    -{{ venda.qtd_abatida }} cx
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div style="font-size: 0.85rem; color: var(--text-muted); padding: 0.5rem;">Nenhuma venda vinculada a este lote de compra ainda.</div>
+                    {% endif %}
+                </div>
+            </details>
+        {% empty %}
+            <p style="color: var(--text-muted); font-size: 0.9rem;">Nenhuma nota de compra encontrada ou registrada no período.</p>
+        {% endfor %}
+    </div>
+
+    <!-- Botão Carregar Mais -->
+    <div style="text-align: center; margin-top: 1rem;">
+        <button id="btn-carregar-mais" class="btn" style="background: white; border: 1px solid #cbd5e1; color: #475569;">
+            ⬇️ Carregar mais notas (Procedural)
+        </button>
     </div>
 </div>
 
@@ -269,5 +350,59 @@
             alert(`❌ Erro: ${err}`);
         }
     }
+
+    // --- LÓGICA DA ÁRVORE DE RASTREAMENTO (Busca e Paginação Procedural) ---
+    document.addEventListener("DOMContentLoaded", function() {
+        const nodes = Array.from(document.querySelectorAll('.arvore-node'));
+        const inputBusca = document.getElementById('busca-arvore');
+        const checkAtivos = document.getElementById('filtro-ativas-arvore');
+        const btnCarregar = document.getElementById('btn-carregar-mais');
+        
+        let nodesVisiveis = 5; // Limite inicial de carregamento
+
+        function atualizarArvore() {
+            const termo = inputBusca.value.toLowerCase().trim();
+            const apenasAtivos = checkAtivos.checked;
+            
+            let countVisible = 0;
+            
+            nodes.forEach(node => {
+                const searchData = node.getAttribute('data-search').toLowerCase();
+                const isAtivo = node.getAttribute('data-ativo') === 'true';
+                
+                const matchBusca = termo === '' || searchData.includes(termo);
+                const matchStatus = !apenasAtivos || isAtivo;
+                
+                if (matchBusca && matchStatus) {
+                    if (countVisible < nodesVisiveis) {
+                        node.style.display = 'block';
+                    } else {
+                        node.style.display = 'none';
+                    }
+                    countVisible++;
+                } else {
+                    node.style.display = 'none';
+                }
+            });
+
+            // Ocultar botão de carregar mais se já mostrou todos os compatíveis
+            if (countVisible <= nodesVisiveis) {
+                btnCarregar.style.display = 'none';
+            } else {
+                btnCarregar.style.display = 'inline-block';
+            }
+        }
+
+        inputBusca.addEventListener('input', () => { nodesVisiveis = 5; atualizarArvore(); });
+        checkAtivos.addEventListener('change', () => { nodesVisiveis = 5; atualizarArvore(); });
+        
+        btnCarregar.addEventListener('click', () => {
+            nodesVisiveis += 5; // Carrega mais 5 nós por vez
+            atualizarArvore();
+        });
+
+        // Inicializa
+        atualizarArvore();
+    });
 </script>
 {% endblock %}

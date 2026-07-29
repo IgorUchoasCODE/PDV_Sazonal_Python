@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Caixa (PDV) — Sazonalizei{% endblock %}
+{% block page_title %}Ponto de Venda (Caixa) — Validação & Trava de Estoque em Tempo Real{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; height: calc(100vh - 140px);">
+    
+    <!-- LADO ESQUERDO: BUSCA E TABELA DO CARRINHO DE VENDAS -->
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+        
+        <!-- Campo de Busca por Digitação Parcial (Autocomplete AJAX) -->
+        <div class="metric-card" style="padding: 1.25rem; border: 2.5px solid var(--brand-blue-main);">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: 800; color: var(--brand-blue-dark); font-size: 1rem;">
+                🔍 Buscar Produto no Caixa (Digitação Parcial por Nome ou Cód):
+            </label>
+            <div class="search-wrapper">
+                <input type="text" id="input-busca" class="input-field" placeholder="Digite para buscar... (ex: 'ARROZ', '5KG', 'OVO')" autocomplete="off" autofocus>
+                <div id="autocomplete-results" class="autocomplete-dropdown"></div>
+            </div>
+            <div id="stock-lock-warning" class="stock-lock-warning">
+                ⚠️ ATENÇÃO: Quantidade solicitada excede o estoque disponível! Inclusão bloqueada.
+            </div>
+        </div>
+
+        <!-- Tabela do Carrinho de Compras -->
+        <div class="table-container" style="flex: 1; overflow-y: auto; border: 2px solid var(--border-color);">
+            <table class="table-custom" id="tabela-carrinho">
+                <thead>
+                    <tr>
+                        <th>Cód</th>
+                        <th>Produto</th>
+                        <th>Qtd Pedida</th>
+                        <th>Estoque Disponível</th>
+                        <th>Preço Unit (R$)</th>
+                        <th>Total (R$)</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody id="carrinho-body">
+                    <!-- Itens inseridos via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+    <!-- LADO DIREITO: RESUMO E FECHAMENTO DO CAIXA COM REFORÇO VISUAL -->
+    <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="metric-card" style="flex: 1; border: 3px solid var(--brand-blue-dark); display: flex; flex-direction: column; justify-content: space-between; background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);">
+            <div>
+                <h3 style="margin-bottom: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.75rem; color: var(--brand-blue-dark);">
+                    🔒 Fechamento de Caixa / Venda
+                </h3>
+
+                <!-- Seleção do Cliente -->
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Cliente (Entidade):</label>
+                    <select id="select-cliente" class="form-control">
+                        <option value="">-- Consumidor Final (Não Identificado) --</option>
+                        {% for c in clientes %}
+                        <option value="{{ c.id_entidade }}">{{ c.pessoa_nome|default:c.empresa_nome }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Forma de Pagamento Principal -->
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Forma de Pagamento:</label>
+                    <select id="select-forma-pagamento" class="form-control">
+                        {% for f in formas_pagamento %}
+                        <option value="{{ f.id }}">{{ f.descricao }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Valor Pago (Permite Pagamento Parcial/A Prazo) -->
+                <div style="margin-bottom: 1.25rem;">
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Valor Recebido em Caixa (R$):</label>
+                    <input type="number" id="input-valor-pago" step="0.01" class="input-field" placeholder="0.00">
+                </div>
+            </div>
+
+            <!-- Totalizador com Contorno Destacado -->
+            <div style="background-color: var(--brand-blue-dark); color: #ffffff; padding: 1.25rem; border-radius: var(--radius-md); border: 2px solid var(--brand-blue-main);">
+                <div style="display: flex; justify-content: space-between; font-size: 0.9rem; margin-bottom: 0.5rem;">
+                    <span>Total de Itens:</span>
+                    <strong id="total-itens" style="color: #fff;">0</strong>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 1.6rem; font-weight: 800;">
+                    <span>TOTAL:</span>
+                    <span id="total-valor-venda" style="color: #34d399;">R$ 0,00</span>
+                </div>
+            </div>
+
+            <button id="btn-finalizar-venda" class="btn btn-emerald" style="width: 100%; margin-top: 1rem; font-size: 1.1rem; padding: 1rem;">
+                ✅ Finalizar Venda no Caixa (ENTER)
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let carrinho = [];
+
+document.addEventListener('DOMContentLoaded', () => {
+    const inputBusca = document.getElementById('input-busca');
+    const dropdown = document.getElementById('autocomplete-results');
+
+    // Autocomplete por digitação parcial (AJAX)
+    inputBusca.addEventListener('input', async (e) => {
+        const query = e.target.value.trim();
+        if (query.length === 0) {
+            dropdown.classList.remove('active');
+            return;
+        }
+
+        try {
+            const resp = await fetch(`/api/buscar-produtos/?q=${encodeURIComponent(query)}`);
+            const data = await resp.json();
+
+            if (data.sucesso && data.resultados.length > 0) {
+                dropdown.innerHTML = data.resultados.map(p => `
+                    <div class="autocomplete-item" onclick="adicionarAoCarrinhoComTrava(${p.id}, '${p.nome}', ${p.valor_venda}, ${p.estoque})">
+                        <div>
+                            <strong>#${p.id} - ${p.nome}</strong>
+                            <div style="font-size: 0.78rem; font-weight: 700; color: ${p.estoque > 0 ? '#059669' : '#dc2626'};">
+                                Estoque Disponível: ${p.estoque} ${p.unidade}
+                            </div>
+                        </div>
+                        <strong class="text-emerald" style="font-size: 1rem;">R$ ${p.valor_venda.toFixed(2)}</strong>
+                    </div>
+                `).join('');
+                dropdown.classList.add('active');
+            } else {
+                dropdown.innerHTML = '<div class="autocomplete-item" style="color: #94a3b8;">Nenhum produto encontrado...</div>';
+                dropdown.classList.add('active');
+            }
+        } catch (err) {
+            console.error("Erro na busca parcial:", err);
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!inputBusca.contains(e.target) && !dropdown.contains(e.target)) {
+            dropdown.classList.remove('active');
+        }
+    });
+
+    document.getElementById('btn-finalizar-venda').addEventListener('click', finalizarVenda);
+});
+
+// TRAVA DE ESTOQUE EM TEMPO REAL
+function adicionarAoCarrinhoComTrava(id, nome, preco, estoqueDisponivel) {
+    const warning = document.getElementById('stock-lock-warning');
+    const itemExistente = carrinho.find(i => i.id === id);
+    const qtdDesejada = itemExistente ? itemExistente.quantidade + 1 : 1;
+
+    if (qtdDesejada > estoqueDisponivel && estoqueDisponivel > 0) {
+        warning.innerText = `⚠️ BLOQUEADO: Você tentou incluir ${qtdDesejada} un de '${nome}', mas o estoque disponível é apenas ${estoqueDisponivel} un!`;
+        warning.classList.add('active');
+        return;
+    }
+
+    warning.classList.remove('active');
+
+    if (itemExistente) {
+        itemExistente.quantidade += 1;
+    } else {
+        carrinho.push({ id, nome, quantidade: 1, valorVenda: preco, estoqueMax: estoqueDisponivel });
+    }
+
+    document.getElementById('input-busca').value = '';
+    document.getElementById('autocomplete-results').classList.remove('active');
+    renderizarCarrinho();
+}
+
+function renderizarCarrinho() {
+    const tbody = document.getElementById('carrinho-body');
+    let totalGeral = 0;
+    let totalQtd = 0;
+
+    tbody.innerHTML = carrinho.map((item, index) => {
+        const subtotal = item.quantidade * item.valorVenda;
+        totalGeral += subtotal;
+        totalQtd += item.quantidade;
+
+        return `
+            <tr>
+                <td>#${item.id}</td>
+                <td><strong>${item.nome}</strong></td>
+                <td>
+                    <input type="number" value="${item.quantidade}" min="1" max="${item.estoqueMax}" style="width: 70px;" class="input-field" onchange="alterarQtd(${index}, this.value)">
+                </td>
+                <td><span class="badge badge-emerald">${item.estoqueMax} un</span></td>
+                <td>R$ ${item.valorVenda.toFixed(2)}</td>
+                <td class="text-emerald"><strong>R$ ${subtotal.toFixed(2)}</strong></td>
+                <td>
+                    <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; color: #f43f5e;" onclick="removerDoCarrinho(${index})">❌</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    document.getElementById('total-itens').innerText = totalQtd;
+    document.getElementById('total-valor-venda').innerText = `R$ ${totalGeral.toFixed(2)}`;
+    
+    const inputPago = document.getElementById('input-valor-pago');
+    if (!inputPago.value || parseFloat(inputPago.value) === 0) {
+        inputPago.value = totalGeral.toFixed(2);
+    }
+}
+
+function alterarQtd(index, qtd) {
+    const q = parseFloat(qtd);
+    const item = carrinho[index];
+    const warning = document.getElementById('stock-lock-warning');
+
+    if (q > item.estoqueMax) {
+        warning.innerText = `⚠️ BLOQUEADO: Quantidade (${q}) excede o estoque disponível (${item.estoqueMax})!`;
+        warning.classList.add('active');
+        item.quantidade = item.estoqueMax;
+    } else if (q > 0) {
+        warning.classList.remove('active');
+        item.quantidade = q;
+    }
+    renderizarCarrinho();
+}
+
+function removerDoCarrinho(index) {
+    carrinho.splice(index, 1);
+    document.getElementById('stock-lock-warning').classList.remove('active');
+    renderizarCarrinho();
+}
+
+async function finalizarVenda() {
+    if (carrinho.length === 0) {
+        alert("Adicione pelo menos um produto ao carrinho!");
+        return;
+    }
+
+    const clienteId = document.getElementById('select-cliente').value;
+    const formaPagamentoId = parseInt(document.getElementById('select-forma-pagamento').value);
+    const valorPago = parseFloat(document.getElementById('input-valor-pago').value) || 0;
+
+    const payload = {
+        id_cliente: clienteId ? parseInt(clienteId) : null,
+        data: new Date().toISOString().split('T')[0],
+        produtos: carrinho.map(i => ({
+            id: i.id,
+            quantidade: i.quantidade,
+            valorVenda: i.valorVenda
+        })),
+        id_forma_pagamento: formaPagamentoId,
+        valor_pagamento: valorPago
+    };
+
+    try {
+        const resp = await fetch('/api/vender/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        const res = await resp.json();
+        if (res.sucesso) {
+            alert(`✅ Venda #${res.id_fluxo_nota} realizada com sucesso! Total: R$ ${res.valor_total.toFixed(2)}`);
+            carrinho = [];
+            renderizarCarrinho();
+        } else {
+            alert(`❌ Erro ao realizar venda: ${res.mensagem}`);
+        }
+    } catch (err) {
+        alert(`❌ Erro de comunicação: ${err}`);
+    }
+}
+</script>
+{% endblock %}

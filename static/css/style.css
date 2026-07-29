@@ -1,0 +1,557 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    /* Cores da Logo Sazonalizei */
+    --brand-red: #d90429;
+    --brand-blue: #00509d;
+    --brand-blue-dark: #0b2545;
+    
+    /* Cores de Fundo (Tema Claro) */
+    --bg-main: #f4f7f6; /* Fundo levemente acinzentado */
+    --bg-surface: rgba(255, 255, 255, 0.85); /* Fundo dos cards com glassmorphism */
+    --bg-sidebar: #ffffff;
+    
+    /* Texto */
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --text-light: #ffffff;
+    
+    /* Cores Semânticas */
+    --color-success: #10b981;
+    --color-warning: #f59e0b;
+    --color-danger: #ef4444;
+    
+    /* Sombras e Efeitos */
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    
+    --transition-fast: 0.15s ease-in-out;
+    --transition-normal: 0.3s ease-in-out;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', sans-serif;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    display: flex;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Layout Principal */
+.app-container {
+    display: flex;
+    width: 100%;
+}
+
+/* Sidebar com Glassmorphism suave */
+.sidebar {
+    width: 260px;
+    background-color: var(--bg-sidebar);
+    border-right: 1px solid rgba(0,0,0,0.05);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem 1rem;
+    box-shadow: var(--shadow-sm);
+    z-index: 10;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 2.5rem;
+    padding: 0 10px;
+}
+
+.brand-logo-svg {
+    width: 48px;
+    height: 48px;
+    filter: drop-shadow(0px 4px 4px rgba(0,0,0,0.1));
+}
+
+.brand-title-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.brand-text {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--brand-blue-dark);
+    letter-spacing: -0.5px;
+}
+
+.brand-tagline {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.nav-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    color: var(--text-main);
+    padding: 0.8rem 1rem;
+    border-radius: 8px;
+    font-weight: 500;
+    font-size: 0.95rem;
+    transition: var(--transition-fast);
+}
+
+.nav-link:hover {
+    background-color: rgba(0, 80, 157, 0.05);
+    color: var(--brand-blue);
+    transform: translateX(4px);
+}
+
+.nav-link.active {
+    background: linear-gradient(135deg, var(--brand-blue), var(--brand-blue-dark));
+    color: var(--text-light);
+    box-shadow: 0 4px 12px rgba(0, 80, 157, 0.3);
+}
+
+.nav-icon {
+    font-size: 1.1rem;
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(0,0,0,0.05);
+    text-align: center;
+    color: var(--text-muted);
+}
+
+/* Área de Conteúdo */
+.main-content {
+    flex: 1;
+    padding: 2rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    overflow-y: auto;
+}
+
+/* Glassmorphism Cards */
+.metric-card, .climate-card, .glass-panel {
+    background: var(--bg-surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    border-radius: 12px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    padding: 1.5rem;
+    transition: var(--transition-normal);
+}
+
+.metric-card:hover, .climate-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+/* Grid de Métricas */
+.grid-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    border-collapse: collapse;
+}
+
+.table th, .table td {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    text-align: left;
+}
+
+.table th {
+    font-weight: 600;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+}
+
+.table tr:last-child td {
+    border-bottom: none;
+}
+
+/* ==========================================================================
+   PAINÉIS DA DASHBOARD (TENDÊNCIAS E ALERTAS)
+   ========================================================================== */
+
+.dashboard-panels-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.dashboard-panel {
+    background: var(--bg-surface);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 16px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: var(--transition-normal);
+}
+
+.dashboard-panel:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.panel-header {
+    background: rgba(255, 255, 255, 0.5);
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--brand-blue-dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.panel-body {
+    padding: 1.5rem;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+}
+
+/* Tendências Sazonais */
+.trends-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.trend-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    font-size: 0.95rem;
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.3);
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid var(--brand-blue);
+}
+
+.trend-highlights {
+    display: flex;
+    gap: 1rem;
+    margin-top: auto;
+}
+
+.highlight-box {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.6);
+    padding: 1rem;
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.4);
+}
+
+.hl-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.hl-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--brand-blue-dark);
+}
+
+/* Alertas de Estoque */
+.alerts-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    max-height: 250px;
+    overflow-y: auto;
+}
+
+.alert-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    border-radius: 8px;
+    border-left: 4px solid;
+    background: rgba(255, 255, 255, 0.5);
+}
+
+.alert-danger {
+    border-left-color: var(--brand-red);
+    background: rgba(211, 47, 47, 0.05);
+}
+
+.alert-warning {
+    border-left-color: #f59e0b;
+    background: rgba(245, 158, 11, 0.05);
+}
+
+.alert-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.alert-content strong {
+    color: var(--text-main);
+    font-size: 0.95rem;
+}
+
+.alert-content span {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.alert-badge {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.3rem 0.6rem;
+    border-radius: 20px;
+}
+
+.alert-danger .alert-badge {
+    background: rgba(211, 47, 47, 0.1);
+    color: var(--brand-red);
+}
+
+.alert-warning .alert-badge {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+}
+
+.all-good-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 2rem;
+    color: var(--color-success);
+    height: 100%;
+}
+
+.all-good-state .icon-large {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-main);
+    margin-bottom: 0.25rem;
+}
+
+.metric-subtitle {
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.text-emerald { color: var(--color-success); }
+.text-blue { color: var(--brand-blue); }
+.text-red { color: var(--brand-red); }
+.text-danger { color: #dc2626; font-weight: bold; }
+
+.row-danger {
+    background: rgba(239, 68, 68, 0.08) !important;
+}
+.row-danger:hover {
+    background: rgba(239, 68, 68, 0.15) !important;
+}
+
+.badge-red-status {
+    background: rgba(239, 68, 68, 0.15);
+    color: #991b1b;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.badge-amber-status {
+    background: rgba(245, 158, 11, 0.15);
+    color: #92400e;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-green-status {
+    background: rgba(16, 185, 129, 0.15);
+    color: #065f46;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+/* Clima Bar */
+.climate-indicators-bar {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.climate-card {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+}
+
+.climate-card-icon {
+    font-size: 2rem;
+    background: rgba(255,255,255,0.5);
+    border-radius: 50%;
+    padding: 10px;
+}
+
+.climate-card-title {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.climate-card-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--brand-blue-dark);
+}
+
+/* Chart Wrapper */
+.organic-chart-wrapper {
+    background: var(--bg-surface);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.5);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    position: relative;
+}
+
+.chart-filters-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.filter-btn-group {
+    display: flex;
+    background: #e2e8f0;
+    border-radius: 8px;
+    padding: 4px;
+}
+
+.filter-btn {
+    border: none;
+    background: transparent;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.filter-btn:hover {
+    color: var(--text-main);
+}
+
+.filter-btn.active {
+    background: var(--bg-sidebar);
+    color: var(--brand-blue-dark);
+    box-shadow: var(--shadow-sm);
+}
+
+/* Chart Canvas Container */
+.chart-canvas-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+}
+
+/* Indicativos Sazonais de Produtos */
+.seasonal-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.status-urgente {
+    background: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.status-atencao {
+    background: rgba(245, 158, 11, 0.15);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.status-favoravel {
+    background: rgba(16, 185, 129, 0.15);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.tag-clima {
+    background: rgba(11, 37, 69, 0.08);
+    color: var(--brand-blue-dark);
+    padding: 0.2rem 0.6rem;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.8rem;
+}
+

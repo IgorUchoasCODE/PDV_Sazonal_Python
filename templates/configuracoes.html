@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+
+{% block title %}Configurações — Sazonalizei{% endblock %}
+{% block page_title %}Configurações do Sistema{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h2>⚙️ Configurações</h2>
+    <p>Preferências gerais do Sazonalizei — Sistema de Gestão Sazonal.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">👤 Conta</h3>
+        <p style="color: var(--text-muted); font-size: .9rem; margin-bottom: .75rem;">
+            Usuário conectado: <strong>{{ request.session.usuario_nome|default:"admin" }}</strong>
+        </p>
+        <a href="{% url 'logout' %}" class="btn btn-secondary">🚪 Sair da conta</a>
+    </div>
+
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">🗄️ Banco de Dados</h3>
+        <p style="color: var(--text-muted); font-size: .9rem;">
+            Este sistema usa o banco SQLite próprio <code>databaseSazonalizei.db</code>,
+            gerenciado diretamente pelo backend <code>InventoryManager</code> /
+            <code>PaymentManager</code> em <code>br/com/pdv/src</code>.
+        </p>
+    </div>
+
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">🎨 Aparência</h3>
+        <p style="color: var(--text-muted); font-size: .9rem;">
+            Tema atual: <strong>Sistema Moderno</strong> (navy + vermelho + azul).
+            Personalizações adicionais de tema podem ser feitas em
+            <code>static/css/style.css</code>.
+        </p>
+    </div>
+
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">ℹ️ Sobre</h3>
+        <p style="color: var(--text-muted); font-size: .9rem;">
+            Sazonalizei — Inteligência Comercial Sazonal.<br>
+            © 2026 Sistema de Gestão Sazonal.
+        </p>
+    </div>
+</div>
+{% endblock %}

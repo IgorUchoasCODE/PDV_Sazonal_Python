@@ -1,0 +1,93 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Entrar — Sazonalizei</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <div class="login-page">
+
+        <!-- Coluna esquerda: logo + formulário -->
+        <div class="login-left">
+            <div class="login-card">
+                <svg class="login-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M 50 50 L 50 4 A 46 46 0 0 0 6 60 Z" fill="#d90429" stroke="#ffffff" stroke-width="2"/>
+                    <path d="M 50 50 L 6 60 A 46 46 0 0 0 94 60 Z" fill="#00509d" stroke="#ffffff" stroke-width="2"/>
+                    <path d="M 50 50 L 94 60 A 46 46 0 0 1 50 96 A 46 46 0 0 1 6 60 Z" fill="#f8fafc" stroke="#ffffff" stroke-width="2"/>
+                    <circle cx="28" cy="28" r="6" fill="#f59e0b"/>
+                    <path d="M 70 24 Q 74 20 78 24 Q 82 24 82 28 Q 82 32 74 32 Z" fill="#ffffff"/>
+                    <line x1="72" y1="34" x2="70" y2="38" stroke="#ffffff" stroke-width="1.5"/>
+                    <line x1="77" y1="34" x2="75" y2="38" stroke="#ffffff" stroke-width="1.5"/>
+                    <path d="M 30 78 L 70 78 L 65 84 L 35 84 Z" fill="#0b2545"/>
+                    <circle cx="50" cy="50" r="22" fill="#ffffff" stroke="#00509d" stroke-width="2.5"/>
+                    <path d="M 38 48 L 62 48 L 62 58 L 38 58 Z" fill="#00509d"/>
+                    <path d="M 36 44 L 64 44 L 62 48 L 38 48 Z" fill="#d90429"/>
+                    <rect x="45" y="52" width="10" height="6" fill="#ffffff"/>
+                </svg>
+
+                <h1 class="login-brand-title">Sazonal<span>izei</span></h1>
+                <p class="login-tagline">Faça login para acessar sua gestão</p>
+
+                {% if erro %}
+                <div class="login-error">⚠️ {{ erro }}</div>
+                {% endif %}
+
+                <div class="login-hint">Acesso de demonstração — usuário: <strong>admin</strong> · senha: <strong>admin123</strong></div>
+
+                <form method="post" class="login-form">
+                    {% csrf_token %}
+                    <div class="login-field">
+                        <label for="usuario">Usuário</label>
+                        <div class="login-input-wrap">
+                            <span class="field-icon">👤</span>
+                            <input type="text" id="usuario" name="usuario" placeholder="Digite seu usuário" autocomplete="username" required autofocus>
+                        </div>
+                    </div>
+
+                    <div class="login-field">
+                        <label for="senha">Senha</label>
+                        <div class="login-input-wrap">
+                            <span class="field-icon">🔒</span>
+                            <input type="password" id="senha" name="senha" placeholder="Digite sua senha" autocomplete="current-password" required>
+                            <button type="button" class="toggle-password" onclick="alternarSenha()" aria-label="Mostrar senha">👁️</button>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn-login">→ ENTRAR</button>
+                </form>
+
+                <p class="login-copyright">© 2026 Sazonalizei — Sistema de Gestão Sazonal</p>
+            </div>
+        </div>
+
+        <!-- Coluna direita: painel decorativo -->
+        <div class="login-right">
+            <div class="login-right-content">
+                <h2>Gestão comercial que acompanha as estações do ano.</h2>
+                <p>Estoque, vendas, financeiro e análise sazonal em um só lugar — pensado para negócios que sentem o efeito do clima e do rio no dia a dia.</p>
+            </div>
+        </div>
+
+        <!-- Ondas decorativas no rodapé -->
+        <svg class="login-wave-bg" viewBox="0 0 1600 220" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,120 C300,180 500,60 800,110 C1100,160 1300,90 1600,130 L1600,220 L0,220 Z" fill="#dbeafe" opacity="0.7"/>
+            <path d="M0,150 C280,90 520,190 820,140 C1120,90 1340,170 1600,150 L1600,220 L0,220 Z" fill="#00509d"/>
+            <path d="M0,190 C320,150 560,210 860,175 C1160,140 1360,200 1600,180 L1600,220 L0,220 Z" fill="#d90429"/>
+        </svg>
+    </div>
+
+    <script src="{% static 'js/main.js' %}"></script>
+    <script>
+        function alternarSenha() {
+            const campo = document.getElementById('senha');
+            const btn = document.querySelector('.toggle-password');
+            const visivel = campo.type === 'text';
+            campo.type = visivel ? 'password' : 'text';
+            btn.textContent = visivel ? '👁️' : '🙈';
+        }
+    </script>
+</body>
+</html>
