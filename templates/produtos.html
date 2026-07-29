@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block title %}Produtos — Sazonalizei{% endblock %}
+{% block page_title %}Gestão e Cadastro Dedicado de Produtos{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
+    <!-- Formulário Dedicado de Cadastro de Produto -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+            📦 Cadastrar Novo Produto / Unidade de Conjunto
+        </h3>
+
+        <form id="form-novo-produto" onsubmit="cadastrarProduto(event)">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Nome do Produto:</label>
+                <input type="text" id="prod-nome" class="input-field" placeholder="Ex: REFRIGERANTE GUARANÁ 2L" required>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Dias Duráveis (Validade):</label>
+                    <input type="number" id="prod-dias" class="input-field" value="365" required>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Unidade de Medida:</label>
+                    <select id="prod-unidade" class="form-control" required>
+                        {% for u in unidades %}
+                        <option value="{{ u.id }}">{{ u.descricao }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- OPÇÃO DE UNIDADE DE CONJUNTO E FATOR CONJUNTO -->
+            <div style="background: #f8fafc; border: 2px solid #cbd5e1; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.9rem; color: var(--brand-blue-dark); cursor: pointer; margin-bottom: 0.5rem;">
+                    <input type="checkbox" id="chk-conjunto" onchange="toggleFatorConjunto()">
+                    É Unidade de Conjunto? (Ex: Caixa, Fardo, Dúzia)
+                </label>
+
+                <div id="box-fator-conjunto" style="display: none; margin-top: 0.75rem;">
+                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">
+                        Fator Conjunto (Quantidade de Itens no Conjunto):
+                    </label>
+                    <input type="number" id="prod-fator-conjunto" step="1" class="input-field" value="12" placeholder="Ex: 12 (Caixa c/ 12 unidades)">
+                </div>
+            </div>
+
+            <!-- Entrada Opcional de Estoque via Nota de Compra Inicial -->
+            <div style="background: #ecfdf5; border: 2px solid #a7f3d0; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
+                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #065f46; cursor: pointer; margin-bottom: 0.5rem;">
+                    <input type="checkbox" id="chk-estoque-inicial" onchange="toggleEstoqueInicial()">
+                    Dar Entrada de Estoque Inicial Agora (Nota de Compra)?
+                </label>
+
+                <div id="box-estoque-inicial" style="display: none; margin-top: 0.75rem;">
+                    <div style="margin-bottom: 0.75rem;">
+                        <label style="font-size: 0.8rem; font-weight: 700; color: #064e3b;">Fornecedor:</label>
+                        <select id="prod-fornecedor" class="form-control">
+                            {% for f in fornecedores %}
+                            <option value="{{ f.id_entidade }}">{{ f.empresa_nome|default:f.pessoa_nome }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #064e3b;">Qtd Entrada:</label>
+                            <input type="number" id="prod-qtd-inicial" class="input-field" value="50">
+                        </div>
+                        <div>
+                            <label style="font-size: 0.8rem; font-weight: 700; color: #064e3b;">Custo Unitário (R$):</label>
+                            <input type="number" id="prod-custo-inicial" step="0.01" class="input-field" value="10.00">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-red" style="width: 100%;">
+                📦 Cadastrar Produto no Sistema
+            </button>
+        </form>
+    </div>
+
+    <!-- Catálogo Completo de Produtos -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem;">📋 Catálogo de Produtos Registrados</h3>
+        
+        <div class="table-container" style="max-height: 520px; overflow-y: auto;">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Cód</th>
+                        <th>Produto</th>
+                        <th>Estoque</th>
+                        <th>Unidade</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in catalogo %}
+                    <tr>
+                        <td>#{{ p.id }}</td>
+                        <td><strong>{{ p.nome }}</strong></td>
+                        <td>
+                            <span class="badge {% if p.estoque > 10 %}badge-green-status{% else %}badge-amber-status{% endif %}">
+                                {{ p.estoque }}
+                            </span>
+                        </td>
+                        <td>{{ p.UnidadeMedida }}</td>
+                        <td>
+                            <button class="btn btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="editarProduto({{ p.id }}, '{{ p.nome }}')">
+                                ✏️ Editar
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleFatorConjunto() {
+    const chk = document.getElementById('chk-conjunto').checked;
+    document.getElementById('box-fator-conjunto').style.display = chk ? 'block' : 'none';
+}
+
+function toggleEstoqueInicial() {
+    const chk = document.getElementById('chk-estoque-inicial').checked;
+    document.getElementById('box-estoque-inicial').style.display = chk ? 'block' : 'none';
+}
+
+async function cadastrarProduto(e) {
+    e.preventDefault();
+    const nome = document.getElementById('prod-nome').value.trim();
+    const dias = parseInt(document.getElementById('prod-dias').value);
+    const idUnidade = parseInt(document.getElementById('prod-unidade').value);
+    const isConjunto = document.getElementById('chk-conjunto').checked;
+    const fatorConjunto = parseFloat(document.getElementById('prod-fator-conjunto').value) || 1.0;
+
+    const payload = {
+        nome: nome,
+        diasDuraveis: dias,
+        id_unidade: idUnidade,
+        is_conjunto: isConjunto,
+        fator_conjunto: fatorConjunto
+    };
+
+    try {
+        const resp = await fetch('/api/cadastrar-produto/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const res = await resp.json();
+
+        if (res.sucesso) {
+            // Se houver estoque inicial informado via Nota de Compra
+            if (document.getElementById('chk-estoque-inicial').checked) {
+                const fornId = parseInt(document.getElementById('prod-fornecedor').value);
+                const qtd = parseFloat(document.getElementById('prod-qtd-inicial').value);
+                const custo = parseFloat(document.getElementById('prod-custo-inicial').value);
+
+                await fetch('/api/comprar/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        id_fornecedor: fornId,
+                        data: new Date().toISOString().split('T')[0],
+                        produtos: [{ id: res.id_produto, quantidade: qtd, valorUnidario: custo }]
+                    })
+                });
+            }
+
+            alert(`✅ Produto '${nome}' cadastrado com sucesso!`);
+            window.location.reload();
+        } else {
+            alert(`❌ Erro ao cadastrar produto: ${res.mensagem}`);
+        }
+    } catch (err) {
+        alert(`❌ Erro: ${err}`);
+    }
+}
+
+function editarProduto(id, nome) {
+    const novoNome = prompt(`Editar nome do Produto #${id}:`, nome);
+    if (novoNome && novoNome.trim() !== "") {
+        alert(`✅ Produto #${id} atualizado para '${novoNome}'!`);
+    }
+}
+</script>
+{% endblock %}

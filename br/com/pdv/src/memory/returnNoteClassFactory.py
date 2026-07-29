@@ -36,6 +36,11 @@ class ReturnNoteClassFactory:
 
             id_nota_venda_origem = nota.get("id_notaOrigem")
             if not id_nota_venda_origem:
+                item_fe = DB.SELECT.FLUXO_ESTOQUE_POR_NOTA.buscar_um(id)
+                if item_fe:
+                    id_nota_venda_origem = item_fe.get("id_notaOrigem")
+
+            if not id_nota_venda_origem:
                 raise ValueError(f"Nota de devolução {id} precisa referenciar uma nota de venda de origem.")
 
             # Referencia / fabricar a NotaVenda de origem via SaleNoteClassFactory

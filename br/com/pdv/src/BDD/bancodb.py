@@ -133,7 +133,6 @@ class BancoDB:
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 id_tipoNota INTEGER NOT NULL,
                 id_representante INTEGER NOT NULL,
-                id_notaOrigem INTEGER REFERENCES "fluxosNotasEstoque" (id) ON DELETE SET NULL,
                 data_vencimento DATE,
                 FOREIGN KEY (id_tipoNota) REFERENCES tiposNotas (id),
                 FOREIGN KEY (id_representante) REFERENCES entidades (id)
@@ -334,8 +333,7 @@ class BancoDB:
                    p.nome as produto_nome,
                    tn.descricao as tipo_nota,
                    fn.id_representante,
-                   fn.data_vencimento,
-                   fn.id_notaOrigem as id_notaOrigem_cabecalho
+                   fn.data_vencimento
             FROM fluxoEstoque fe
             JOIN produto p ON fe.id_produto = p.id
             JOIN tiposNotas tn ON fe.id_tipoNota = tn.id

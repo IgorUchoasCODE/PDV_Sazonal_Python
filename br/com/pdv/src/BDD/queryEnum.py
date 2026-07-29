@@ -60,7 +60,7 @@ class INSERT(QueryBase):
     ENTIDADE = "INSERT INTO entidades (id_pessoa, id_empresa, fornecedor, cliente, funcionario) VALUES (?, ?, ?, ?, ?)"
     ENTIDADE_CARGO = "INSERT INTO entidades_cargos (id_entidade, id_cargo) VALUES (?, ?)"
     REGISTRO = "INSERT INTO registro (id_tipos_registros, id_entidade, registro) VALUES (?, ?, ?)"
-    FLUXO_NOTA_ESTOQUE = "INSERT INTO fluxosNotasEstoque (id_tipoNota, id_representante, id_notaOrigem, data_vencimento) VALUES (?, ?, ?, ?)"
+    FLUXO_NOTA_ESTOQUE = "INSERT INTO fluxosNotasEstoque (id_tipoNota, id_representante, data_vencimento) VALUES (?, ?, ?)"
     FLUXO_PAGAMENTO_NOTA = "INSERT INTO fluxoPagamentoNotas (id_fluxo_nota, id_forma_pagamento, valor, data_pagamento) VALUES (?, ?, ?, ?)"
     FLUXO_ESTOQUE = "INSERT INTO fluxoEstoque (id_notaOrigem, id_fluxo_nota, id_tipoNota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     TAXA_PAGAMENTO = "INSERT INTO taxasPagamento (id_formaPagamento, descricao, taxa) VALUES (?, ?, ?)"

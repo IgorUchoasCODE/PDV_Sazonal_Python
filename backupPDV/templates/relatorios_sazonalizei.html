@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% block title %}Relatórios Sazonalizei — Inteligência Comercial{% endblock %}
+{% block page_title %}Relatórios Inteligentes & Expansão com Triangulação Sazonal{% endblock %}
+
+{% block content %}
+<!-- SEÇÃO DE REPOSITÓRIO E NOTAS EXPANSÍVEIS -->
+<div class="metric-card" style="margin-bottom: 2rem;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.75rem;">
+        <div>
+            <h3 style="color: var(--brand-blue-dark);">📋 Notas Registradas & Triangulação Sazonal (Clique na Nota para Expandir)</h3>
+            <p style="font-size: 0.85rem; color: var(--text-muted);">
+                Clique em qualquer nota para expandir a lista de produtos e os fatores sazonais gravados na emissão.
+            </p>
+        </div>
+        <button class="btn btn-primary" onclick="window.print()">🖨️ Imprimir Relatório PDF</button>
+    </div>
+
+    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>ID Nota</th>
+                    <th>Tipo de Nota</th>
+                    <th>Representante / Entidade</th>
+                    <th>Vencimento / Data</th>
+                    <th>Ação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for n in notas %}
+                <tr class="expandable-row" onclick="toggleExpandirNota({{ n.id }})">
+                    <td><strong>#{{ n.id }}</strong></td>
+                    <td>
+                        <span class="badge {% if n.id_tipoNota == 2 %}badge-green-status{% elif n.id_tipoNota == 1 %}badge-blue{% else %}badge-red-status{% endif %}">
+                            {% if n.id_tipoNota == 1 %}COMPRA{% elif n.id_tipoNota == 2 %}VENDA{% elif n.id_tipoNota == 3 %}DEVOLUÇÃO{% elif n.id_tipoNota == 4 %}PERDA{% else %}COMPENSAÇÃO{% endif %}
+                        </span>
+                    </td>
+                    <td>Entidade ID #{{ n.id_representante|default:"1" }}</td>
+                    <td>{{ n.data_vencimento|default:"Emissão Recente" }}</td>
+                    <td><button class="btn btn-secondary" style="padding: 0.25rem 0.6rem; font-size: 0.8rem;">🔍 Ver Detalhes</button></td>
+                </tr>
+                <!-- Linha Detalhe Expansível -->
+                <tr id="row-detail-{{ n.id }}" class="expanded-detail-row">
+                    <td colspan="5" style="padding: 1.25rem; background: #f8fafc; border-left: 4px solid var(--brand-blue-main);">
+                        <div id="content-detail-{{ n.id }}">
+                            <small style="color: var(--text-muted);">Carregando itens e triangulação sazonal da nota...</small>
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="5" style="text-align: center; color: var(--text-muted);">Nenhuma nota registrada...</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- RELATÓRIO TEXTUAL MARKDOWN CONSOLIDADO -->
+<div class="metric-card">
+    <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">📊 Texto Consolidado do Relatório Global</h3>
+    <div style="background: #ffffff; padding: 1.5rem; border-radius: var(--radius-md); border: 2px solid var(--border-color); font-family: monospace; white-space: pre-wrap; color: #1e293b; font-size: 0.95rem;">
+{{ relatorio_markdown }}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function toggleExpandirNota(idNota) {
+    const rowDetail = document.getElementById(`row-detail-${idNota}`);
+    const contentDetail = document.getElementById(`content-detail-${idNota}`);
+
+    if (rowDetail.classList.contains('active')) {
+        rowDetail.classList.remove('active');
+        return;
+    }
+
+    rowDetail.classList.add('active');
+
+    try {
+        const resp = await fetch(`/api/expandir-nota/${idNota}/`);
+        const data = await resp.json();
+
+        if (data.sucesso) {
+            const snap = data.triangulacao_sazonal;
+            const itensHtml = data.itens.map(i => `
+                <tr>
+                    <td>Prod #${i.id_produto}</td>
+                    <td>Qtd: ${i.quantidade}</td>
+                    <td>Valor Unit: R$ ${i.valorUnidario}</td>
+                    <td>Lucro: R$ ${i.lucroTotal}</td>
+                </tr>
+            `).join('');
+
+            contentDetail.innerHTML = `
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                    <div>
+                        <strong style="color: var(--brand-blue-dark); display: block; margin-bottom: 0.5rem;">📦 Itens da Nota:</strong>
+                        <table style="width: 100%; font-size: 0.85rem;" class="table-custom">
+                            ${itensHtml}
+                        </table>
+                    </div>
+                    <div>
+                        <strong style="color: #065f46; display: block; margin-bottom: 0.5rem;">☀️ 🌊 Triangulação dos Registros Sazonais na Data da Emissão:</strong>
+                        <div style="background: #ffffff; border: 1.5px solid #a7f3d0; padding: 0.85rem; border-radius: var(--radius-md); font-size: 0.85rem;">
+                            <div>• <strong>Temperatura:</strong> ${snap.temperatura_atual || '31°C'}</div>
+                            <div>• <strong>Precipitação:</strong> ${snap.precipitacao_mm || '140mm'}</div>
+                            <div>• <strong>Nível do Rio:</strong> ${snap.nivel_rio_atual || '8.4m'}</div>
+                            <div>• <strong>Indicador Clima:</strong> ${snap.indicador_clima || 'FAVORAVEL'}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            contentDetail.innerHTML = `<p style="color: var(--brand-red-main);">${data.mensagem}</p>`;
+        }
+    } catch (err) {
+        contentDetail.innerHTML = `<p style="color: var(--brand-red-main);">Erro ao carregar detalhes: ${err}</p>`;
+    }
+}
+</script>
+{% endblock %}

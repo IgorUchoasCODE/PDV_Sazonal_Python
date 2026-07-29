@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Financeiro & Contábil — Sazonalizei{% endblock %}
+{% block page_title %}Setor Financeiro & Rastreabilidade Contábil (PaymentManager){% endblock %}
+
+{% block content %}
+<!-- BALANÇO FINANCEIRO GLOBAL -->
+<div class="grid-metrics">
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>FATURAMENTO (VENDAS)</span>
+            <span>💰</span>
+        </div>
+        <div class="metric-value text-emerald">R$ {{ resumo.total_vendas|floatformat:2 }}</div>
+        <div class="metric-subtitle">Vendas totais brutas acumuladas</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>RECEBIMENTOS DE CAIXA</span>
+            <span>📥</span>
+        </div>
+        <div class="metric-value text-blue">R$ {{ resumo.pagamentos_recebidos|floatformat:2 }}</div>
+        <div class="metric-subtitle">Total efetivamente recebido</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>CONTAS A RECEBER (PENDENTE)</span>
+            <span>⏳</span>
+        </div>
+        <div class="metric-value text-emerald">R$ {{ resumo.contas_a_receber|floatformat:2 }}</div>
+        <div class="metric-subtitle">Saldo a receber de clientes</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>CONTAS A PAGAR (FORNECEDORES)</span>
+            <span>📉</span>
+        </div>
+        <div class="metric-value text-rose">R$ {{ resumo.contas_a_pagar|floatformat:2 }}</div>
+        <div class="metric-subtitle">Saldo pendente a fornecedores</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
+    <!-- Registrar Pagamento / Quitação -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; color: var(--brand-blue-dark);">
+            💳 Registrar Liquidação / Pagamento
+        </h3>
+
+        <form id="form-pagamento" onsubmit="registrarPagamento(event)">
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Número ID da Nota (Compra ou Venda):</label>
+                <input type="number" id="pag-id-nota" class="input-field" placeholder="Ex: 234" required>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Forma de Pagamento:</label>
+                <select id="pag-forma" class="form-control" required>
+                    {% for f in formas_pagamento %}
+                    <option value="{{ f.id }}">{{ f.descricao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Valor a Liquidar (R$):</label>
+                <input type="number" id="pag-valor" step="0.01" class="input-field" placeholder="Ex: 100.00" required>
+            </div>
+
+            <button type="submit" class="btn btn-emerald" style="width: 100%;">
+                ✅ Confirmar Quitação / Baixa Contábil
+            </button>
+        </form>
+    </div>
+
+    <!-- Painel de Rastreabilidade Contábil & Entidades -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">🔍 Painel de Rastreabilidade Contábil por Entidade</h3>
+
+        <div class="table-container" style="max-height: 440px; overflow-y: auto;">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Entidade ID</th>
+                        <th>Titular</th>
+                        <th>Tipo</th>
+                        <th>Status Contábil</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in entidades %}
+                    <tr>
+                        <td>#{{ e.id_entidade }}</td>
+                        <td><strong>{{ e.pessoa_nome|default:e.empresa_nome }}</strong></td>
+                        <td><span class="badge badge-blue">{{ e.tipo_entidade }}</span></td>
+                        <td>
+                            {% if e.is_cliente %}
+                            <span class="badge badge-green-status">Cliente Ativo</span>
+                            {% endif %}
+                            {% if e.is_fornecedor %}
+                            <span class="badge badge-amber-status">Fornecedor Ativo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; color: var(--text-muted);">Nenhuma entidade cadastrada...</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function registrarPagamento(e) {
+    e.preventDefault();
+
+    const idNota = parseInt(document.getElementById('pag-id-nota').value);
+    const formaId = parseInt(document.getElementById('pag-forma').value);
+    const valor = parseFloat(document.getElementById('pag-valor').value);
+
+    const payload = {
+        id_fluxo_nota: idNota,
+        id_forma_pagamento: formaId,
+        valor: valor,
+        data: new Date().toISOString().split('T')[0]
+    };
+
+    try {
+        const resp = await fetch('/api/registrar-pagamento/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const res = await resp.json();
+
+        if (res.sucesso) {
+            alert(`✅ ${res.mensagem}`);
+            window.location.reload();
+        } else {
+            alert(`❌ Erro: ${res.mensagem}`);
+        }
+    } catch (err) {
+        alert(`❌ Erro de comunicação: ${err}`);
+    }
+}
+</script>
+{% endblock %}

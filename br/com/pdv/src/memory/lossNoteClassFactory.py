@@ -35,6 +35,11 @@ class LossNoteClassFactory:
 
             # Define o tipo de origem com base no tipo da nota ou no vínculo
             id_nota_origem = nota.get("id_notaOrigem")
+            if not id_nota_origem:
+                item_fe = DB.SELECT.FLUXO_ESTOQUE_POR_NOTA.buscar_um(id)
+                if item_fe:
+                    id_nota_origem = item_fe.get("id_notaOrigem")
+
             tipo_origem = "DEVOLUCAO" if id_tipo == 4 else "ESTOQUE"
 
             # Tenta instanciar a nota de origem correspondente no banco

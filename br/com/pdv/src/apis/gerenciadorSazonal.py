@@ -104,9 +104,9 @@ class GerenciadorSazonal:
                     vazao_atual = float(vazoes[0])
                     vazao_semana = float(sum(vazoes) / len(vazoes))
 
-        if vazao_atual > 25000:
+        if vazao_atual > 7.0:
             indicador_rio = "CHEIA"
-        elif vazao_atual < 5000 and vazao_atual > 0:
+        elif vazao_atual < 2.5 and vazao_atual > 0:
             indicador_rio = "SECA"
         else:
             indicador_rio = "NORMAL"
@@ -165,6 +165,59 @@ class GerenciadorSazonal:
             "detalhes_eventos": eventos_proximos
         }
 
+    # Cache interno de histórico mensal para evitar requisições repetidas para notas passadas
+    _cache_historico_mensal: dict = {}
+
+    @classmethod
+    def obter_indicadores_por_data(cls, data_ref: str | date, cidade: str = DEFAULT_CIDADE, rio: str = DEFAULT_RIO) -> dict:
+        """
+        Retorna indicadores sazonais otimizados para uma data.
+        
+        Se data_ref < date.today() (data passada):
+          - Verifica cache mensal em memória (YYYY-MM).
+          - Se o mês não estiver em cache, faz UMA única requisição HTTP para o histórico completo do MÊS.
+          - Armazena em cache e reutiliza para todas as notas daquele mês sem novas requisições GET.
+        
+        Se data_ref >= date.today() (hoje ou futuro):
+          - Consome a API em tempo real.
+        """
+        dt = None
+        if isinstance(data_ref, date):
+            dt = data_ref
+        elif isinstance(data_ref, str):
+            try:
+                dt = datetime.strptime(data_ref, "%Y-%m-%d").date()
+            except ValueError:
+                pass
+        
+        if not dt:
+            dt = date.today()
+
+        hoje = date.today()
+
+        if dt < hoje:
+            ano_mes = dt.strftime("%Y-%m")
+            data_str = dt.strftime("%Y-%m-%d")
+
+            # Se o mês ainda não foi baixado, faz o download único do mês completo
+            if ano_mes not in cls._cache_historico_mensal:
+                import calendar
+                ano, mes = dt.year, dt.month
+                ultimo_dia = calendar.monthrange(ano, mes)[1]
+                start_date = f"{ano_mes}-01"
+                end_date = f"{ano_mes}-{ultimo_dia:02d}"
+
+                print(f"[GerenciadorSazonal] Baixando histórico mensal único ({ano_mes}) para economizar requisições...")
+                dados_mes = ClimaAPI.obter_historico_mes(start_date, end_date, cidade, rio)
+                cls._cache_historico_mensal[ano_mes] = dados_mes if isinstance(dados_mes, dict) else {}
+
+            mapa_mes = cls._cache_historico_mensal.get(ano_mes, {})
+            if data_str in mapa_mes:
+                return mapa_mes[data_str]
+
+        # Em tempo real ou fallback:
+        return cls.obter_indicadores_sazonais(cidade, rio)
+
     @classmethod
     def salvar_snapshot_sazonal(cls, id_fluxo_nota: int, cidade: str = DEFAULT_CIDADE, rio: str = DEFAULT_RIO) -> bool:
         """
@@ -184,14 +237,14 @@ class GerenciadorSazonal:
                 print(f"[GerenciadorSazonal] Snapshot IGNORADO: A Nota ID {id_fluxo_nota} é do tipo {id_tipo_nota}. Snapshots sazonais são gravados SOMENTE para Notas de Venda (2) e Perda (4/5).")
                 return False
 
-            # Obtém os indicativos das APIs
-            ind = cls.obter_indicadores_sazonais(cidade, rio)
-            data_hoje = str(date.today())
+            # Obtém os indicativos (com cache mensal se for data passada)
+            data_nota = nota.get("data_vencimento") or str(date.today())
+            ind = cls.obter_indicadores_por_data(data_nota, cidade, rio)
 
             # Insere no banco via DB.INSERT.SNAPSHOT_SAZONAL
             DB.INSERT.SNAPSHOT_SAZONAL.executar(
                 id_fluxo_nota,
-                data_hoje,
+                str(data_nota),
                 ind["temperatura_atual"],
                 ind["temperatura_min_semana"],
                 ind["temperatura_max_semana"],
@@ -205,7 +258,7 @@ class GerenciadorSazonal:
                 ind["quantidade_eventos_proximos"]
             )
 
-            print(f"[GerenciadorSazonal] Snapshot Sazonal salvo com SUCESSO para Nota ID {id_fluxo_nota} (Tipo: {id_tipo_nota})")
+            print(f"[GerenciadorSazonal] Snapshot Sazonal salvo com SUCESSO para Nota ID {id_fluxo_nota} (Tipo: {id_tipo_nota}, Data: {data_nota})")
             return True
 
         except Exception as e:

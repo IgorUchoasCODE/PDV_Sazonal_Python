@@ -27,15 +27,21 @@ class CompensationNoteClassFactory:
             if not nota:
                 raise ValueError(f"Erro ao fabricar nota de compensação {id}: nota não encontrada no banco.")
 
-            if nota.get("id_tipoNota") != 5:
-                raise ValueError(f"Erro ao fabricar nota de compensação {id}: a nota no banco é do tipo {nota.get('id_tipoNota')} (esperado tipo 5: REPOSIÇÃO/COMPENSAÇÃO).")
+            id_tipo = nota.get("id_tipoNota")
+            if id_tipo != 5:
+                raise ValueError(f"Erro ao fabricar nota de compensação {id}: a nota no banco é do tipo {id_tipo} (esperado tipo 5: REPOSIÇÃO).")
 
             id_nota_perda_origem = nota.get("id_notaOrigem")
             if not id_nota_perda_origem:
-                raise ValueError(f"Nota de compensação {id} precisa referenciar uma nota de perda de origem.")
+                item_fe = DB.SELECT.FLUXO_ESTOQUE_POR_NOTA.buscar_um(id)
+                if item_fe:
+                    id_nota_perda_origem = item_fe.get("id_notaOrigem")
 
-            # Instancia/referencia a NotaPerda de origem via LossNoteClassFactory
-            LossNoteClassFactory.fabricar(id_nota_perda_origem)
+            # Instancia/referencia a NotaPerda de origem via LossNoteClassFactory se for uma nota de perda (tipo 4 ou 5)
+            if id_nota_perda_origem:
+                n_db = DB.SELECT.FLUXO_NOTA_ESTOQUE_POR_ID.buscar_um(id_nota_perda_origem)
+                if n_db and n_db.get("id_tipoNota") in (4, 5):
+                    LossNoteClassFactory.fabricar(id_nota_perda_origem)
 
             data_emissao = nota.get("data") or nota.get("data_vencimento")
             data_vencimento = nota.get("data_vencimento")

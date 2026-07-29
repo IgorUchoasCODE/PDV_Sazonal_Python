@@ -1,0 +1,931 @@
+{
+  "unidadeMedida": {
+    "columns": [
+      "id",
+      "descricao",
+      "fatorConjunto"
+    ],
+    "rows": [
+      [
+        1,
+        "Unidade",
+        null
+      ],
+      [
+        2,
+        "Kilograma",
+        null
+      ],
+      [
+        3,
+        "Litros",
+        null
+      ],
+      [
+        4,
+        "Metros",
+        null
+      ],
+      [
+        5,
+        "Conjunto/Pacote",
+        1
+      ],
+      [
+        6,
+        "Conjunto/Pacote",
+        360
+      ]
+    ]
+  },
+  "produto": {
+    "columns": [
+      "id",
+      "nome",
+      "diasDuraveis",
+      "unidadeMedida",
+      "receita",
+      "varejo",
+      "atacado",
+      "promocao"
+    ],
+    "rows": [
+      [
+        1,
+        "CAIXA OVO BRANCO A ",
+        7,
+        6,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        2,
+        "CAIXA OVO BRANCO B",
+        7,
+        6,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        3,
+        "CAIXA OVO BRANCO C",
+        7,
+        6,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        4,
+        "CAIXA OVO BRANCO EXTRA",
+        7,
+        6,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        5,
+        "CAIXA OVO BRANCO JUMBO",
+        7,
+        6,
+        0,
+        0,
+        0,
+        0
+      ],
+      [
+        6,
+        "CARTELA OVO BRANCO A",
+        7,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        7,
+        "CARTELA OVO BRANCO B",
+        7,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        8,
+        "CARTELA OVO BRANCO C",
+        7,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        9,
+        "CARTELA OVO BRANCO EXTRA",
+        7,
+        1,
+        1,
+        0,
+        0,
+        0
+      ],
+      [
+        10,
+        "CARTELA OVO BRANCO JUMBO",
+        7,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
+    ]
+  },
+  "receita": {
+    "columns": [
+      "id_produto",
+      "id_ingrediente",
+      "qntdd"
+    ],
+    "rows": [
+      [
+        6,
+        1,
+        30
+      ],
+      [
+        7,
+        2,
+        30
+      ],
+      [
+        8,
+        3,
+        30
+      ],
+      [
+        9,
+        4,
+        30
+      ],
+      [
+        10,
+        5,
+        30
+      ]
+    ]
+  },
+  "tiposNotas": {
+    "columns": [
+      "id",
+      "descricao"
+    ],
+    "rows": [
+      [
+        1,
+        "COMPRA"
+      ],
+      [
+        2,
+        "VENDA"
+      ],
+      [
+        3,
+        "DEVOLUÇÃO"
+      ],
+      [
+        4,
+        "PERDA"
+      ],
+      [
+        5,
+        "REPOSIÇÃO"
+      ],
+      [
+        6,
+        "PAGAMENTO"
+      ]
+    ]
+  },
+  "formaPagamento": {
+    "columns": [
+      "id",
+      "descricao"
+    ],
+    "rows": [
+      [
+        1,
+        "DINHEIRO"
+      ],
+      [
+        2,
+        "PIX"
+      ],
+      [
+        3,
+        "CARTÃO DE DÉBITO"
+      ],
+      [
+        4,
+        "CARTÃO DE CRÉDITO"
+      ],
+      [
+        5,
+        "TRANSFERÊNCIA"
+      ],
+      [
+        6,
+        "CHEQUE"
+      ]
+    ]
+  },
+  "taxasPagamento": {
+    "columns": [
+      "id",
+      "id_formaPagamento",
+      "descricao",
+      "taxa"
+    ],
+    "rows": [
+      [
+        1,
+        1,
+        "DINHEIRO",
+        0
+      ],
+      [
+        2,
+        2,
+        "PIX",
+        0
+      ],
+      [
+        3,
+        3,
+        "CARTÃO DE DÉBITO",
+        0
+      ],
+      [
+        4,
+        4,
+        "CARTÃO DE CRÉDITO",
+        0
+      ],
+      [
+        5,
+        5,
+        "TRANSFERÊNCIA",
+        0
+      ],
+      [
+        6,
+        6,
+        "CHEQUE",
+        0
+      ],
+      [
+        7,
+        1,
+        "DINHEIRO",
+        0
+      ],
+      [
+        8,
+        2,
+        "PIX",
+        0
+      ],
+      [
+        9,
+        3,
+        "CARTÃO DE DÉBITO",
+        0
+      ],
+      [
+        10,
+        4,
+        "CARTÃO DE CRÉDITO",
+        0
+      ],
+      [
+        11,
+        5,
+        "TRANSFERÊNCIA",
+        0
+      ],
+      [
+        12,
+        6,
+        "CHEQUE",
+        0
+      ],
+      [
+        13,
+        1,
+        "DINHEIRO",
+        0
+      ],
+      [
+        14,
+        2,
+        "PIX",
+        0
+      ],
+      [
+        15,
+        3,
+        "CARTÃO DE DÉBITO",
+        0
+      ],
+      [
+        16,
+        4,
+        "CARTÃO DE CRÉDITO",
+        0
+      ],
+      [
+        17,
+        5,
+        "TRANSFERÊNCIA",
+        0
+      ],
+      [
+        18,
+        6,
+        "CHEQUE",
+        0
+      ],
+      [
+        19,
+        1,
+        "DINHEIRO",
+        0
+      ],
+      [
+        20,
+        2,
+        "PIX",
+        0
+      ],
+      [
+        21,
+        3,
+        "CARTÃO DE DÉBITO",
+        0
+      ],
+      [
+        22,
+        4,
+        "CARTÃO DE CRÉDITO",
+        0
+      ],
+      [
+        23,
+        5,
+        "TRANSFERÊNCIA",
+        0
+      ],
+      [
+        24,
+        6,
+        "CHEQUE",
+        0
+      ],
+      [
+        25,
+        1,
+        "DINHEIRO",
+        0
+      ],
+      [
+        26,
+        2,
+        "PIX",
+        0
+      ],
+      [
+        27,
+        3,
+        "CARTÃO DE DÉBITO",
+        0
+      ],
+      [
+        28,
+        4,
+        "CARTÃO DE CRÉDITO",
+        0
+      ],
+      [
+        29,
+        5,
+        "TRANSFERÊNCIA",
+        0
+      ],
+      [
+        30,
+        6,
+        "CHEQUE",
+        0
+      ],
+      [
+        31,
+        1,
+        "DINHEIRO",
+        0
+      ],
+      [
+        32,
+        2,
+        "PIX",
+        0
+      ],
+      [
+        33,
+        3,
+        "CARTÃO DE DÉBITO",
+        0
+      ],
+      [
+        34,
+        4,
+        "CARTÃO DE CRÉDITO",
+        0
+      ],
+      [
+        35,
+        5,
+        "TRANSFERÊNCIA",
+        0
+      ],
+      [
+        36,
+        6,
+        "CHEQUE",
+        0
+      ]
+    ]
+  },
+  "fluxosNotasEstoque": {
+    "columns": [
+      "id",
+      "id_tipoNota",
+      "id_representante",
+      "id_notaOrigem",
+      "data_vencimento"
+    ],
+    "rows": []
+  },
+  "fluxoPagamentoNotas": {
+    "columns": [
+      "id",
+      "id_fluxo_nota",
+      "id_forma_pagamento",
+      "valor",
+      "data_pagamento"
+    ],
+    "rows": []
+  },
+  "fluxoEstoque": {
+    "columns": [
+      "id",
+      "id_notaOrigem",
+      "id_fluxo_nota",
+      "id_tipoNota",
+      "id_produto",
+      "quantidade",
+      "valorUnidario",
+      "lucroTotal",
+      "data"
+    ],
+    "rows": []
+  },
+  "sexo": {
+    "columns": [
+      "id",
+      "descricao"
+    ],
+    "rows": [
+      [
+        1,
+        "Masculino"
+      ],
+      [
+        2,
+        "Feminino"
+      ],
+      [
+        3,
+        "Outro"
+      ]
+    ]
+  },
+  "pessoas": {
+    "columns": [
+      "id",
+      "nome",
+      "sexo"
+    ],
+    "rows": [
+      [
+        1,
+        "NAO INFORMADO",
+        3
+      ],
+      [
+        2,
+        "MAY",
+        2
+      ],
+      [
+        3,
+        "CARA AERONALTICA",
+        1
+      ],
+      [
+        4,
+        "TEREZA",
+        2
+      ],
+      [
+        5,
+        "MELQUISEDEQUE",
+        1
+      ],
+      [
+        6,
+        "NALDO",
+        1
+      ],
+      [
+        7,
+        "JUNIO LANCHE",
+        1
+      ],
+      [
+        8,
+        "JANAIRA ",
+        2
+      ],
+      [
+        9,
+        "VIZINHO",
+        1
+      ],
+      [
+        10,
+        "PAI DO SAULO",
+        1
+      ],
+      [
+        11,
+        "ROBERLAN",
+        1
+      ],
+      [
+        12,
+        "ANDREY",
+        1
+      ],
+      [
+        13,
+        "NILSON LANCHE ",
+        1
+      ]
+    ]
+  },
+  "empresas": {
+    "columns": [
+      "id",
+      "nome"
+    ],
+    "rows": [
+      [
+        1,
+        "Ovos de ouro "
+      ],
+      [
+        2,
+        "Gema De Ouro"
+      ],
+      [
+        3,
+        "Granja Marinho "
+      ]
+    ]
+  },
+  "entidades": {
+    "columns": [
+      "id",
+      "id_pessoa",
+      "id_empresa",
+      "fornecedor",
+      "cliente",
+      "funcionario"
+    ],
+    "rows": [
+      [
+        1,
+        1,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        4,
+        null,
+        1,
+        1,
+        0,
+        0
+      ],
+      [
+        5,
+        null,
+        2,
+        1,
+        0,
+        0
+      ],
+      [
+        6,
+        null,
+        3,
+        1,
+        0,
+        0
+      ],
+      [
+        7,
+        2,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        8,
+        3,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        9,
+        4,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        10,
+        5,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        11,
+        6,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        12,
+        7,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        13,
+        8,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        14,
+        9,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        15,
+        10,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        16,
+        11,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        17,
+        12,
+        null,
+        0,
+        1,
+        0
+      ],
+      [
+        18,
+        13,
+        null,
+        0,
+        1,
+        0
+      ]
+    ]
+  },
+  "cargos": {
+    "columns": [
+      "id",
+      "descricao"
+    ],
+    "rows": [
+      [
+        1,
+        "Dono"
+      ],
+      [
+        2,
+        "Sócio"
+      ],
+      [
+        3,
+        "Diretor"
+      ],
+      [
+        4,
+        "Gerente"
+      ],
+      [
+        5,
+        "Supervisor"
+      ],
+      [
+        6,
+        "Vendedor"
+      ],
+      [
+        7,
+        "Operador de Caixa"
+      ],
+      [
+        8,
+        "Atendente"
+      ],
+      [
+        9,
+        "Comprador"
+      ],
+      [
+        10,
+        "Estoquista"
+      ],
+      [
+        11,
+        "Almoxarife"
+      ],
+      [
+        12,
+        "Financeiro"
+      ],
+      [
+        13,
+        "Contador"
+      ],
+      [
+        14,
+        "Recursos Humanos"
+      ],
+      [
+        15,
+        "Marketing"
+      ],
+      [
+        16,
+        "Tecnologia da Informação"
+      ],
+      [
+        17,
+        "Motorista"
+      ],
+      [
+        18,
+        "Entregador"
+      ],
+      [
+        19,
+        "Auxiliar Administrativo"
+      ],
+      [
+        20,
+        "Secretária"
+      ]
+    ]
+  },
+  "entidades_cargos": {
+    "columns": [
+      "id",
+      "id_entidade",
+      "id_cargo"
+    ],
+    "rows": []
+  },
+  "tipos_registros": {
+    "columns": [
+      "id",
+      "descricao"
+    ],
+    "rows": [
+      [
+        1,
+        "Email"
+      ],
+      [
+        2,
+        "Telefone"
+      ],
+      [
+        3,
+        "Celular"
+      ],
+      [
+        4,
+        "Facebook"
+      ],
+      [
+        5,
+        "Instagram"
+      ],
+      [
+        6,
+        "Twitter"
+      ],
+      [
+        7,
+        "LinkedIn"
+      ],
+      [
+        8,
+        "Outro"
+      ]
+    ]
+  },
+  "registro": {
+    "columns": [
+      "id",
+      "id_tipos_registros",
+      "id_entidade",
+      "registro"
+    ],
+    "rows": []
+  },
+  "snapshot_sazonal": {
+    "columns": [
+      "id",
+      "id_fluxo_nota",
+      "data_registro",
+      "temperatura_atual",
+      "temperatura_min_semana",
+      "temperatura_max_semana",
+      "precipitacao_mm",
+      "precipitacao_previsao_semana",
+      "indicador_clima",
+      "nivel_rio_atual",
+      "nivel_rio_previsao_semana",
+      "indicador_rio",
+      "indicador_chuva",
+      "qtd_eventos_proximos"
+    ],
+    "rows": []
+  }
+}

@@ -1,3 +1,4 @@
+from ast import main
 import sqlite3
 from datetime import date, datetime
 from typing import Optional
@@ -271,7 +272,7 @@ class InventoryManager:
                 # ── COMPRA / COMPENSAÇÃO (Entrada → gera lote FIFO) ──
                 if id_tipo in (1, 5):
                     custo = prod.get("ValorTotal", 0.0)
-                    custo_unit = prod.get("valorUnitario", 0.0)
+                    custo_unit = prod.get("valor") or prod.get("valorUnitario", 0.0)
                     if custo_unit == 0 and qtd_mov > 0:
                         custo_unit = custo / qtd_mov
 
@@ -344,6 +345,78 @@ class InventoryManager:
     # ─────────────────────────────────────────────────────────────────
 
     @classmethod
+    def _obter_id_nota_origem_valido(cls, id_nota_origem: Optional[int], id_nota_atual: int, id_produto: int, id_tipo_nota: int) -> int:
+        """
+        Garante que APENAS a Nota de Compra (id_tipo_nota == 1) pode se autoreferenciar (id_notaOrigem == id_nota_atual).
+        Para qualquer outro tipo de nota (Venda, Devolução, Perda, Compensação), o id_notaOrigem retornado
+        será obrigatoriamente diferente de id_nota_atual.
+        """
+        # Nota de Compra (tipo 1): única que se autoreferencia
+        if id_tipo_nota == 1:
+            return id_nota_atual
+
+        # Se id_nota_origem fornecido for válido e diferente de id_nota_atual:
+        if id_nota_origem is not None:
+            try:
+                id_orig_int = int(id_nota_origem)
+                if id_orig_int != int(id_nota_atual):
+                    return id_orig_int
+            except (ValueError, TypeError):
+                pass
+
+        # Tenta recuperar o ID de uma nota de compra de origem no mapa de lotes do produto
+        id_str = str(id_produto)
+        mapa = cls._mapaProdutos.get(id_str, {})
+        lotes = mapa.get("lotes", [])
+        if lotes:
+            for idx in reversed(lotes):
+                parts = str(idx).split(".")
+                if len(parts) >= 2:
+                    try:
+                        nota_compra_id = int(parts[1])
+                        if nota_compra_id != int(id_nota_atual):
+                            return nota_compra_id
+                    except ValueError:
+                        pass
+
+        # Tenta buscar qualquer Nota de Compra cadastrada na memória
+        for n_compra in cls._NotasCompras:
+            dados_c = n_compra.getDados()
+            c_id = dados_c.get("id")
+            if c_id and int(c_id) != int(id_nota_atual):
+                return int(c_id)
+
+        # Busca no banco de dados SQLite qualquer Nota de Compra existente
+        try:
+            from br.com.pdv.src.BDD.bancodb import BancoDB
+            conn = BancoDB.obter_conexao()
+            row = conn.execute("SELECT id FROM fluxosNotasEstoque WHERE id_tipoNota = 1 AND id != ? ORDER BY id DESC LIMIT 1", (id_nota_atual,)).fetchone()
+            if row and row["id"]:
+                return int(row["id"])
+        except Exception:
+            pass
+
+        # Fallback de segurança: nunca permite auto-referência fora de compra
+        return 1 if int(id_nota_atual) != 1 else 2
+
+    @classmethod
+    def _obter_custo_lote_compra(cls, id_compra_lote: Optional[int], id_produto: int) -> float:
+        """Busca o valor de custo unitário registrado na nota de compra do lote."""
+        if id_compra_lote:
+            try:
+                from br.com.pdv.src.BDD.bancodb import BancoDB
+                conn = BancoDB.obter_conexao()
+                row = conn.execute(
+                    "SELECT valorUnidario FROM fluxoEstoque WHERE id_fluxo_nota = ? AND id_produto = ? AND id_tipoNota = 1 LIMIT 1",
+                    (id_compra_lote, id_produto)
+                ).fetchone()
+                if row and row["valorUnidario"] is not None:
+                    return float(row["valorUnidario"])
+            except Exception:
+                pass
+        return cls._get_custo_medio(str(id_produto))
+
+    @classmethod
     def insert_compra(cls, dados: dict) -> Optional[NotaCompra]:
         """
         Registra uma nova Nota de Compra no banco e atualiza os índices em memória.
@@ -380,7 +453,7 @@ class InventoryManager:
             data_venc = cls._parse_data(dados.get("data_vencimento"))
 
             # Salva o cabeçalho no banco (tipo 1 = COMPRA)
-            id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(1, id_forn, None, str(data_venc or data_emissao))
+            id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(1, id_forn, str(data_venc or data_emissao))
             if not id_nota or id_nota <= 0:
                 raise ValueError("Falha ao inserir o cabeçalho da nota de compra no banco.")
 
@@ -401,12 +474,12 @@ class InventoryManager:
                 notaCompra.adicionarProduto(produto)
 
                 # Persiste no fluxo de estoque (id_notaOrigem = auto-referência: compra de si mesma)
-                dados_prod = produto.getDados(f=False)
+                dados_prod = produto.getDados(f=True)
                 DB.INSERT.FLUXO_ESTOQUE.executar(
                     id_nota,   # id_notaOrigem = própria nota de compra (sem NULL)
                     id_nota, 1, id_prod,
                     dados_prod.get("quantidadeEntrada", qtd),
-                    dados_prod.get("valorUnitario", val_unit),
+                    dados_prod.get("valorUnidario", val_unit),
                     dados_prod.get("valorTotalLucro", 0),
                     str(data_emissao)
                 )
@@ -462,7 +535,7 @@ class InventoryManager:
             data_venc = cls._parse_data(dados.get("data_vencimento"))
 
             # Salva cabeçalho no banco (tipo 2 = VENDA)
-            id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(2, id_cli, None, str(data_venc or data_emissao))
+            id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(2, id_cli, str(data_venc or data_emissao))
             if not id_nota or id_nota <= 0:
                 raise ValueError("Falha ao inserir o cabeçalho da nota de venda no banco.")
 
@@ -484,69 +557,126 @@ class InventoryManager:
 
                 if receita and isinstance(receita, dict):
                     # ── PRODUTO COMPOSTO ─────────────────────────────────
-                    # Consome FIFO de cada ingrediente e persiste N linhas no banco
-                    mapa_origem: dict = {}
-                    custo_total_comp = 0.0
+                    # Consome FIFO de cada ingrediente e calcula o CUSTO REAL PONDERADO dos lotes retirados
+                    itens_rastro: list = []
+                    custo_total_real_comp = 0.0
+
                     for id_ingr, qtd_por_un in receita.items():
+                        qtd_por_un = float(qtd_por_un)
+                        prod_ingr = ProductClassFactory.testar_e_fabricar(int(id_ingr))
+                        if prod_ingr:
+                            qtd_por_un = prod_ingr.normalizarQuantidade(qtd_por_un)
+
                         qtd_ingr_total = qtd * qtd_por_un
                         rastro_ingr = cls._consumir_fifo_interno(str(id_ingr), qtd_ingr_total)
-                        custo_total_comp += cls._get_custo_medio(str(id_ingr)) * qtd_por_un
 
+                        custo_real_ingr = 0.0
+                        if rastro_ingr:
+                            for idx_lote, qtd_c in rastro_ingr:
+                                lote = cls._mapaEstoque.get(idx_lote)
+                                c_unit = lote["custo_unitario"] if lote else cls._get_custo_medio(str(id_ingr))
+                                custo_real_ingr += c_unit * qtd_c
+                        else:
+                            custo_real_ingr = cls._get_custo_medio(str(id_ingr)) * qtd_ingr_total
+
+                        custo_total_real_comp += custo_real_ingr
+                        itens_rastro.append((id_ingr, rastro_ingr, qtd_ingr_total, custo_real_ingr))
+
+                    # Custo unitário real do produto composto (Custo Real Total / Quantidade Vendida)
+                    custo_unit_real_comp = (custo_total_real_comp / qtd) if qtd > 0 else 0.0
+
+                    # Executa a venda no produto composto com o CUSTO REAL dos lotes
+                    produto.insertPropertValue(valorUnidario=custo_unit_real_comp, quantidade=qtd)
+                    produto.vender(quantidadeVendas=qtd, valorVenda=val_venda)
+
+                    dados_prod = produto.getDados(f=True)
+                    val_total_lucro = dados_prod.get("valorTotalLucro", 0) or 0
+                    venda_total_comp = val_venda * qtd
+
+                    # Persiste no banco cada ingrediente/lote com seu lucro real exato
+                    mapa_origem: dict = {}
+                    for id_ingr, rastro_ingr, qtd_ingr_total, custo_real_ingr in itens_rastro:
                         if rastro_ingr:
                             mapa_origem[id_ingr] = int(rastro_ingr[0][0].split(".")[1])
+                            total_qtd_rastro = sum(q for _, q in rastro_ingr)
                             for idx_lote, qtd_consumida in rastro_ingr:
                                 id_nota_orig_lote = int(idx_lote.split(".")[1])
+                                lote = cls._mapaEstoque.get(idx_lote)
+                                c_unit_lote = lote["custo_unitario"] if lote else cls._get_custo_medio(str(id_ingr))
+                                custo_lote = c_unit_lote * qtd_consumida
+
+                                # Distribuição 100% genérica proporcional à quantidade física consumida de cada lote
+                                parcela_venda_lote = (qtd_consumida / total_qtd_rastro) * venda_total_comp if total_qtd_rastro > 0 else 0
+                                lucro_frac = round(parcela_venda_lote - custo_lote, 4)
+                                val_venda_banco = round(parcela_venda_lote / qtd_consumida, 4) if qtd_consumida > 0 else 0
+
                                 DB.INSERT.FLUXO_ESTOQUE.executar(
-                                    id_nota_orig_lote,      # id_notaOrigem = nota de compra do lote
+                                    id_nota_orig_lote,      # id_notaOrigem = nota de compra do lote real
                                     id_nota, 2, int(id_ingr),
-                                    qtd_consumida, val_venda, 0,
+                                    qtd_consumida, val_venda_banco, lucro_frac,
                                     str(data_emissao)
                                 )
                         else:
-                            # Sem lote rastreável: auto-referência para evitar NULL
+                            # Sem lote rastreável
+                            id_orig_valido = cls._obter_id_nota_origem_valido(None, id_nota, int(id_ingr), 2)
+                            lucro_frac = round((1.0 / len(receita)) * val_total_lucro, 4) if receita else 0
                             DB.INSERT.FLUXO_ESTOQUE.executar(
-                                id_nota,                    # auto-referência
+                                id_orig_valido,
                                 id_nota, 2, int(id_ingr),
-                                qtd_ingr_total, val_venda, 0,
+                                qtd_ingr_total, val_venda, lucro_frac,
                                 str(data_emissao)
                             )
 
-                    # Registra produto composto na nota em memória
-                    produto.insertPropertValue(valorUnidario=custo_total_comp, quantidade=qtd)
-                    produto.vender(quantidadeVendas=qtd, valorVenda=val_venda)
                     notaVenda.adicionarProduto(produto, id_nota_origem=mapa_origem or None)
 
                 else:
                     # ── PRODUTO SIMPLES ──────────────────────────────────
-                    # Consome FIFO e persiste N linhas no banco (uma por lote de origem)
+                    # Consome FIFO e calcula o CUSTO REAL dos lotes retirados
                     rastro = cls._consumir_fifo_interno(id_prod_str, qtd)
-                    custo_med = cls._get_custo_medio(id_prod_str)
                     id_nota_origem_mem = int(rastro[0][0].split(".")[1]) if rastro else None
 
-                    produto.insertPropertValue(valorUnidario=custo_med, quantidade=qtd)
+                    custo_total_real = 0.0
+                    if rastro:
+                        for idx_lote, qtd_c in rastro:
+                            lote = cls._mapaEstoque.get(idx_lote)
+                            c_unit = lote["custo_unitario"] if lote else cls._get_custo_medio(id_prod_str)
+                            custo_total_real += c_unit * qtd_c
+                    else:
+                        custo_total_real = cls._get_custo_medio(id_prod_str) * qtd
+
+                    custo_unit_real = (custo_total_real / qtd) if qtd > 0 else 0.0
+
+                    produto.insertPropertValue(valorUnidario=custo_unit_real, quantidade=qtd)
                     produto.vender(quantidadeVendas=qtd, valorVenda=val_venda)
                     notaVenda.adicionarProduto(produto, id_nota_origem=id_nota_origem_mem)
 
-                    dados_prod = produto.getDados(f=False)
-                    val_total_lucro = dados_prod.get("valorTotalLucro", 0) or 0
+                    venda_total = val_venda * qtd
 
                     if rastro:
                         for idx_lote, qtd_consumida in rastro:
                             id_nota_orig_lote = int(idx_lote.split(".")[1])
-                            # Fraciona o lucro proporcionalmente à quantidade consumida
-                            lucro_frac = round((qtd_consumida / qtd) * val_total_lucro, 4) if qtd > 0 else 0
+                            # Se o lote é proveniente de reposição (tipo 6), o custo financeiro de aquisição é 0.0 -> Lucro é 100%!
+                            is_reposicao = lote and (lote.get("id_tipo") == 6 or lote.get("e_reposicao"))
+                            c_unit_lote = 0.0 if is_reposicao else (lote["custo_unitario"] if lote else cls._get_custo_medio(id_prod_str))
+
+                            custo_lote = c_unit_lote * qtd_consumida
+                            parcela_venda_lote = val_venda * qtd_consumida
+                            lucro_frac = round(parcela_venda_lote - custo_lote, 4)
+
                             DB.INSERT.FLUXO_ESTOQUE.executar(
-                                id_nota_orig_lote,          # id_notaOrigem = nota de compra do lote
+                                id_nota_orig_lote,          # id_notaOrigem = nota de compra do lote real
                                 id_nota, 2, id_prod,
                                 qtd_consumida, val_venda, lucro_frac,
                                 str(data_emissao)
                             )
                     else:
-                        # Sem lote rastreável: auto-referência para evitar NULL
+                        # Sem lote rastreável: garante origem sem auto-referenciar nota de venda
+                        id_orig_valido = cls._obter_id_nota_origem_valido(None, id_nota, id_prod, 2)
+                        lucro_real = round(venda_total - custo_total_real, 4)
                         DB.INSERT.FLUXO_ESTOQUE.executar(
-                            id_nota,                        # auto-referência
+                            id_orig_valido,
                             id_nota, 2, id_prod,
-                            qtd, val_venda, 0, str(data_emissao)
+                            qtd, val_venda, lucro_real, str(data_emissao)
                         )
 
             notaVenda.salvar()
@@ -571,13 +701,24 @@ class InventoryManager:
         """
         Registra uma nova Nota de Perda.
 
+        Suporta 3 cenários automáticos com base no 'id_nota_origem':
+        1. id_nota_origem = NOTA DE VENDA (Tipo 2):
+           Gera em cadeia: Nota de Devolução (Tipo 3) + Nota de Perda Pós-Devolução (Tipo 4).
+        2. id_nota_origem = NOTA DE COMPRA (Tipo 1):
+           Gera Nota de Perda de Estoque (Tipo 5) consumindo especificamente o lote daquela compra.
+        3. id_nota_origem = NOTA DE DEVOLUÇÃO (Tipo 3):
+           Gera Nota de Perda Pós-Devolução (Tipo 4) citando a devolução original.
+        4. Sem id_nota_origem (None / omissão):
+           Gera Nota de Perda Geral de Estoque (Tipo 5) consumindo os lotes ativos via FIFO.
+
         Formato esperado de 'dados':
         {
-            "origem": "ESTOQUE" | "DEVOLUCAO",
-            "id_nota_origem": int (opcional — ID da nota de venda/devolução de origem),
+            "id_nota_origem": int (opcional — ID da Nota de Venda, Compra ou Devolução),
+            "origem": "ESTOQUE" | "DEVOLUCAO" (opcional),
+            "id_cliente": int (opcional),
             "data": "YYYY-MM-DD" (opcional),
             "produtos": [
-                {"id": int, "quantidade": float, "valorUnidario": float},
+                {"id": int, "quantidade": float, "valorUnidario": float (opcional)},
                 ...
             ]
         }
@@ -587,17 +728,49 @@ class InventoryManager:
             from br.com.pdv.src.memory.productClassFactory import ProductClassFactory
             from br.com.pdv.src.apis.gerenciadorSazonal import GerenciadorSazonal
 
-            origem = dados.get("origem", "ESTOQUE").upper()
             id_nota_orig = dados.get("id_nota_origem")
             lista_produtos = dados.get("produtos")
             if not lista_produtos:
                 raise ValueError("'produtos' é obrigatório.")
 
+            # ── 1. Verifica no banco o tipo da nota apontada em id_nota_origem ──
+            tipo_nota_orig = None
+            if id_nota_orig:
+                try:
+                    from br.com.pdv.src.BDD.bancodb import BancoDB
+                    conn_orig = BancoDB.obter_conexao().execute(
+                        "SELECT id_tipoNota, id_representante FROM fluxosNotasEstoque WHERE id = ?",
+                        (int(id_nota_orig),)
+                    ).fetchone()
+                    if conn_orig:
+                        tipo_nota_orig = conn_orig["id_tipoNota"]
+                except Exception:
+                    pass
+
+            # ── 2. Se id_nota_origem apontar para NOTA DE VENDA (Tipo 2): ──
+            # Gera primeiro a Nota de Devolução e depois vincula a Nota de Perda à essa Devolução!
+            if tipo_nota_orig == 2:
+                payload_dev = {
+                    "id_cliente": dados.get("id_cliente") or conn_orig["id_representante"] or 1,
+                    "id_nota_venda_origem": int(id_nota_orig),
+                    "data": dados.get("data"),
+                    "produtos": lista_produtos
+                }
+                nota_dev = cls.insert_devolucao(payload_dev)
+                id_nota_dev_gerada = nota_dev.getDados()["id"] if nota_dev else id_nota_orig
+
+                dados_perda_dev = dict(dados)
+                dados_perda_dev["origem"] = "DEVOLUCAO"
+                dados_perda_dev["id_nota_origem"] = id_nota_dev_gerada
+                return cls.insert_perda(dados_perda_dev)
+
+            # ── 3. Define origem real (DEVOLUCAO se tipo 3, senão ESTOQUE) ──
+            origem = "DEVOLUCAO" if (tipo_nota_orig == 3 or dados.get("origem", "").upper() == "DEVOLUCAO") else "ESTOQUE"
             data_emissao = cls._parse_data(dados.get("data")) or date.today()
-            id_tipo_nota = 4 if origem == "DEVOLUCAO" else 5  # 4=perda-dev, 5=perda-estoque
+            id_tipo_nota = 4  # 4 = PERDA no banco de dados (tiposNotas)
             id_rep = dados.get("id_representante") or 1
             id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(
-                id_tipo_nota, id_rep, id_nota_orig, str(data_emissao)
+                id_tipo_nota, id_rep, str(data_emissao)
             )
             if not id_nota or id_nota <= 0:
                 raise ValueError("Falha ao inserir o cabeçalho da nota de perda no banco.")
@@ -609,18 +782,98 @@ class InventoryManager:
             for item in lista_produtos:
                 id_prod = item.get("id")
                 qtd = item.get("quantidade")
-                val_unit = item.get("valorUnidario", cls._get_custo_medio(str(id_prod)))
+                if not id_prod or qtd is None or qtd <= 0:
+                    raise ValueError(f"Item inválido em 'produtos': {item}")
+
                 produto = ProductClassFactory.testar_e_fabricar(id_prod)
                 if not produto:
                     raise ValueError(f"Produto ID {id_prod} não encontrado.")
 
-                produto.insertPropertValue(valorUnidario=val_unit, quantidade=qtd)
-                notaPerda.adicionarProduto(produto)
+                receita = produto.getDados().get("Receita")
 
-                DB.INSERT.FLUXO_ESTOQUE.executar(
-                    id_nota_orig if id_nota_orig else id_nota,  # id_notaOrigem: origem ou auto-ref
-                    id_nota, id_tipo_nota, id_prod, qtd, val_unit, 0, str(data_emissao)
-                )
+                if origem == "DEVOLUCAO":
+                    # Perda Pós-Devolução: id_notaOrigem referencia a Nota de Devolução de Origem (ou id_nota_orig)
+                    id_orig_p = id_nota_orig or cls._obter_id_nota_origem_valido(id_nota_orig, id_nota, id_prod, 4)
+                    custo_calculado = 0.0
+                    if receita and isinstance(receita, dict):
+                        for id_ingr, qtd_por_un in receita.items():
+                            c_ingr = cls._get_custo_medio(str(id_ingr))
+                            prod_ingr = ProductClassFactory.testar_e_fabricar(int(id_ingr))
+                            if prod_ingr:
+                                qtd_por_un = prod_ingr.normalizarQuantidade(float(qtd_por_un))
+                            custo_calculado += float(qtd_por_un) * c_ingr
+
+                    val_unit = item.get("valorUnidario") or custo_calculado or cls._get_custo_medio(str(id_prod))
+                    valor_abatido_lucro = round(val_unit * qtd, 4)
+                    produto.insertPropertValue(valorUnidario=val_unit, quantidade=qtd)
+                    notaPerda.adicionarProduto(produto)
+
+                    DB.INSERT.FLUXO_ESTOQUE.executar(
+                        id_orig_p,  # id_notaOrigem = ID da Nota de Devolução original
+                        id_nota, 4, id_prod, qtd, val_unit, valor_abatido_lucro, str(data_emissao)
+                    )
+                else:
+                    # Perda em Estoque: Consome lotes FIFO ativos em estoque e grava fatia por lote
+                    if receita and isinstance(receita, dict):
+                        for id_ingr, qtd_por_un in receita.items():
+                            qtd_por_un = float(qtd_por_un)
+                            prod_ingr = ProductClassFactory.testar_e_fabricar(int(id_ingr))
+                            if prod_ingr:
+                                qtd_por_un = prod_ingr.normalizarQuantidade(qtd_por_un)
+
+                            qtd_perd_ingr = qtd * qtd_por_un
+                            rastro_ingr = cls._consumir_fifo_interno(str(id_ingr), qtd_perd_ingr)
+
+                            if rastro_ingr:
+                                for idx_lote, qtd_lote in rastro_ingr:
+                                    lote_data = cls._mapaEstoque.get(idx_lote, {})
+                                    c_lote = lote_data.get("custo_unitario") or cls._get_custo_medio(str(id_ingr))
+                                    id_compra_lote = lote_data.get("id_nota") or cls._obter_id_nota_origem_valido(None, id_nota, int(id_ingr), 5)
+                                    valor_abatido_lucro = round(c_lote * qtd_lote, 4)
+
+                                    ingr = ProductClassFactory.testar_e_fabricar(id_ingr)
+                                    ingr.insertPropertValue(valorUnidario=c_lote, quantidade=qtd_lote)
+                                    notaPerda.adicionarProduto(ingr)
+
+                                    DB.INSERT.FLUXO_ESTOQUE.executar(
+                                        id_compra_lote,  # id_notaOrigem = Nota de Compra do Lote Perdiddo
+                                        id_nota, 4, int(id_ingr), qtd_lote, c_lote, valor_abatido_lucro, str(data_emissao)
+                                    )
+                            else:
+                                c_fallback = cls._get_custo_medio(str(id_ingr))
+                                id_orig_f = cls._obter_id_nota_origem_valido(None, id_nota, int(id_ingr), 5)
+                                valor_abatido_lucro = round(c_fallback * qtd_perd_ingr, 4)
+                                ingr = ProductClassFactory.testar_e_fabricar(id_ingr)
+                                ingr.insertPropertValue(valorUnidario=c_fallback, quantidade=qtd_perd_ingr)
+                                notaPerda.adicionarProduto(ingr)
+                                DB.INSERT.FLUXO_ESTOQUE.executar(
+                                    id_orig_f, id_nota, 4, int(id_ingr), qtd_perd_ingr, c_fallback, valor_abatido_lucro, str(data_emissao)
+                                )
+                    else:
+                        rastro_prod = cls._consumir_fifo_interno(str(id_prod), qtd)
+                        if rastro_prod:
+                            for idx_lote, qtd_lote in rastro_prod:
+                                lote_data = cls._mapaEstoque.get(idx_lote, {})
+                                c_lote = lote_data.get("custo_unitario") or cls._get_custo_medio(str(id_prod))
+                                id_compra_lote = lote_data.get("id_nota") or cls._obter_id_nota_origem_valido(None, id_nota, id_prod, 5)
+                                valor_abatido_lucro = round(c_lote * qtd_lote, 4)
+
+                                produto.insertPropertValue(valorUnidario=c_lote, quantidade=qtd_lote)
+                                notaPerda.adicionarProduto(produto)
+
+                                DB.INSERT.FLUXO_ESTOQUE.executar(
+                                    id_compra_lote,  # id_notaOrigem = Nota de Compra do Lote Perdiddo
+                                    id_nota, 4, id_prod, qtd_lote, c_lote, valor_abatido_lucro, str(data_emissao)
+                                )
+                        else:
+                            c_fallback = cls._get_custo_medio(str(id_prod))
+                            id_orig_f = cls._obter_id_nota_origem_valido(None, id_nota, id_prod, 5)
+                            valor_abatido_lucro = round(c_fallback * qtd, 4)
+                            produto.insertPropertValue(valorUnidario=c_fallback, quantidade=qtd)
+                            notaPerda.adicionarProduto(produto)
+                            DB.INSERT.FLUXO_ESTOQUE.executar(
+                                id_orig_f, id_nota, 4, id_prod, qtd, c_fallback, valor_abatido_lucro, str(data_emissao)
+                            )
 
             notaPerda.salvar()
             cls._NotasPerdas.add(notaPerda)
@@ -642,14 +895,15 @@ class InventoryManager:
     def insert_devolucao(cls, dados: dict) -> Optional[NotaDevolucao]:
         """
         Registra uma Nota de Devolução. Produtos compostos são desmontados.
+        Resgata o custo real dos lotes de compra originais a partir da Nota de Venda.
 
         Formato esperado de 'dados':
         {
             "id_cliente": int,
-            "id_nota_venda_origem": int,
+            "id_nota_venda_origem": int (OBRIGATÓRIO — ID da Nota de Venda devolvida),
             "data": "YYYY-MM-DD" (opcional),
             "produtos": [
-                {"id": int, "quantidade": float, "valorUnidario": float},
+                {"id": int, "quantidade": float, "valorUnidario": float (opcional — resgatado da venda se omitido)},
                 ...
             ]
         }
@@ -672,7 +926,7 @@ class InventoryManager:
             data_venc = cls._parse_data(dados.get("data_vencimento"))
 
             id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(
-                3, id_cli, id_nota_venda, str(data_venc or data_emissao)
+                3, id_cli, str(data_venc or data_emissao)
             )
             if not id_nota or id_nota <= 0:
                 raise ValueError("Falha ao inserir o cabeçalho da nota de devolução no banco.")
@@ -685,31 +939,105 @@ class InventoryManager:
             for item in lista_produtos:
                 id_prod = item.get("id")
                 qtd = item.get("quantidade")
-                val_unit = item.get("valorUnidario", cls._get_custo_medio(str(id_prod)))
+                if not id_prod or qtd is None or qtd <= 0:
+                    raise ValueError(f"Item inválido em 'produtos': {item}")
+
                 produto = ProductClassFactory.testar_e_fabricar(id_prod)
                 if not produto:
                     raise ValueError(f"Produto ID {id_prod} não encontrado.")
 
+                # Busca valor de venda original praticado na nota de venda se não informado no item
+                val_unit_fornecido = item.get("valorUnidario")
+
                 receita = produto.getDados().get("Receita")
                 if receita and isinstance(receita, dict):
-                    # Desmonta: devolve os ingredientes
+                    # Desmonta: devolve os ingredientes rastreando os lotes de compra originais da nota de venda
+                    rows_venda = DB.SELECT.FLUXO_ESTOQUE_POR_NOTA.buscar(id_nota_venda) or []
                     for id_ingr, qtd_por_un in receita.items():
-                        qtd_dev = qtd * qtd_por_un
-                        custo_ingr = cls._get_custo_medio(str(id_ingr))
-                        ingr = ProductClassFactory.testar_e_fabricar(id_ingr)
-                        ingr.insertPropertValue(valorUnidario=custo_ingr, quantidade=qtd_dev)
-                        notaDev.adicionarProduto(ingr)
-                        DB.INSERT.FLUXO_ESTOQUE.executar(
-                            id_nota_venda,  # id_notaOrigem = nota de venda devolvida
-                            id_nota, 3, id_ingr, qtd_dev, custo_ingr, 0, str(data_emissao)
-                        )
+                        qtd_por_un = float(qtd_por_un)
+                        prod_ingr = ProductClassFactory.testar_e_fabricar(int(id_ingr))
+                        if prod_ingr:
+                            qtd_por_un = prod_ingr.normalizarQuantidade(qtd_por_un)
+
+                        qtd_dev_ingr = qtd * qtd_por_un
+                        rows_ingr = [r for r in rows_venda if r["id_produto"] == int(id_ingr)]
+
+                        qtd_restante_dev = qtd_dev_ingr
+
+                        if rows_ingr:
+                            for r_v in rows_ingr:
+                                if qtd_restante_dev <= 0:
+                                    break
+                                qtd_venda_lote = r_v.get("quantidade", 0.0)
+                                id_compra_lote = r_v.get("id_notaOrigem")
+
+                                # Custo unitário de compra real do lote e proporção de lucro devolvido
+                                custo_lote = cls._obter_custo_lote_compra(id_compra_lote, int(id_ingr))
+                                lucro_venda_lote = r_v.get("lucroTotal", 0.0)
+
+                                qtd_reverter = min(qtd_restante_dev, qtd_venda_lote)
+                                if qtd_reverter <= 0:
+                                    continue
+
+                                qtd_restante_dev -= qtd_reverter
+                                lucro_devolvido = round((lucro_venda_lote / qtd_venda_lote) * qtd_reverter, 4) if qtd_venda_lote > 0 else 0.0
+
+                                ingr = ProductClassFactory.testar_e_fabricar(id_ingr)
+                                ingr.insertPropertValue(valorUnidario=custo_lote, quantidade=qtd_reverter)
+                                notaDev.adicionarProduto(ingr)
+
+                                DB.INSERT.FLUXO_ESTOQUE.executar(
+                                    id_nota_venda,  # id_notaOrigem = NOTA DE VENDA ORIGINAL
+                                    id_nota, 3, id_ingr, qtd_reverter, custo_lote, lucro_devolvido, str(data_emissao)
+                                )
+
+                        if qtd_restante_dev > 0:
+                            c_fallback = cls._get_custo_medio(str(id_ingr))
+                            ingr = ProductClassFactory.testar_e_fabricar(id_ingr)
+                            ingr.insertPropertValue(valorUnidario=c_fallback, quantidade=qtd_restante_dev)
+                            notaDev.adicionarProduto(ingr)
+                            DB.INSERT.FLUXO_ESTOQUE.executar(
+                                id_nota_venda, id_nota, 3, id_ingr, qtd_restante_dev, c_fallback, 0, str(data_emissao)
+                            )
                 else:
-                    produto.insertPropertValue(valorUnidario=val_unit, quantidade=qtd)
-                    notaDev.adicionarProduto(produto)
-                    DB.INSERT.FLUXO_ESTOQUE.executar(
-                        id_nota_venda,  # id_notaOrigem = nota de venda devolvida
-                        id_nota, 3, id_prod, qtd, val_unit, 0, str(data_emissao)
-                    )
+                    rows_venda = DB.SELECT.FLUXO_ESTOQUE_POR_NOTA.buscar(id_nota_venda) or []
+                    rows_prod = [r for r in rows_venda if r["id_produto"] == int(id_prod)]
+
+                    qtd_restante_dev = qtd
+
+                    if rows_prod:
+                        for r_v in rows_prod:
+                            if qtd_restante_dev <= 0:
+                                break
+                            qtd_venda_lote = r_v.get("quantidade", 0.0)
+                            id_compra_lote = r_v.get("id_notaOrigem")
+
+                            # Custo unitário de compra real do lote e proporção de lucro devolvido
+                            custo_lote = cls._obter_custo_lote_compra(id_compra_lote, int(id_prod))
+                            lucro_venda_lote = r_v.get("lucroTotal", 0.0)
+
+                            qtd_reverter = min(qtd_restante_dev, qtd_venda_lote)
+                            if qtd_reverter <= 0:
+                                continue
+
+                            qtd_restante_dev -= qtd_reverter
+                            lucro_devolvido = round((lucro_venda_lote / qtd_venda_lote) * qtd_reverter, 4) if qtd_venda_lote > 0 else 0.0
+
+                            produto.insertPropertValue(valorUnidario=custo_lote, quantidade=qtd_reverter)
+                            notaDev.adicionarProduto(produto)
+
+                            DB.INSERT.FLUXO_ESTOQUE.executar(
+                                id_nota_venda,  # id_notaOrigem = NOTA DE VENDA ORIGINAL
+                                id_nota, 3, id_prod, qtd_reverter, custo_lote, lucro_devolvido, str(data_emissao)
+                            )
+
+                    if qtd_restante_dev > 0:
+                        val_unit = cls._get_custo_medio(str(id_prod))
+                        produto.insertPropertValue(valorUnidario=val_unit, quantidade=qtd_restante_dev)
+                        notaDev.adicionarProduto(produto)
+                        DB.INSERT.FLUXO_ESTOQUE.executar(
+                            id_nota_venda, id_nota, 3, id_prod, qtd_restante_dev, val_unit, 0, str(data_emissao)
+                        )
 
             notaDev.salvar()
             cls._NotasDevolucoes.add(notaDev)
@@ -740,17 +1068,33 @@ class InventoryManager:
         try:
             from br.com.pdv.src.memory.productClassFactory import ProductClassFactory
 
+            id_rep = dados.get("id_representante") or 1
             id_perda_orig = dados.get("id_nota_perda_origem")
             lista_produtos = dados.get("produtos")
-            if not id_perda_orig or not lista_produtos:
-                raise ValueError("'id_nota_perda_origem' e 'produtos' são obrigatórios.")
+            if not lista_produtos:
+                raise ValueError("'produtos' é obrigatório.")
+
+            # Se id_nota_perda_origem for omisso, busca a Nota de Perda (Tipo 4 ou 5) mais recente/FIFO do fornecedor
+            if not id_perda_orig:
+                try:
+                    from br.com.pdv.src.BDD.bancodb import BancoDB
+                    row_p = BancoDB.obter_conexao().execute(
+                        "SELECT id FROM fluxosNotasEstoque WHERE id_tipoNota IN (4, 5) AND id_representante = ? ORDER BY id DESC LIMIT 1",
+                        (id_rep,)
+                    ).fetchone()
+                    if row_p:
+                        id_perda_orig = row_p["id"]
+                except Exception:
+                    pass
+
+            if not id_perda_orig:
+                id_perda_orig = 1  # Fallback de segurança
 
             data_emissao = cls._parse_data(dados.get("data")) or date.today()
             data_venc = cls._parse_data(dados.get("data_vencimento"))
 
-            id_rep = dados.get("id_representante") or 1
             id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(
-                5, id_rep, id_perda_orig, str(data_venc or data_emissao)
+                5, id_rep, str(data_venc or data_emissao)
             )
             if not id_nota or id_nota <= 0:
                 raise ValueError("Falha ao inserir o cabeçalho da nota de compensação no banco.")
@@ -762,16 +1106,36 @@ class InventoryManager:
             for item in lista_produtos:
                 id_prod = item.get("id")
                 qtd = item.get("quantidade")
-                val_unit = item.get("valorUnidario", cls._get_custo_medio(str(id_prod)))
+                if not id_prod or qtd is None or qtd <= 0:
+                    raise ValueError(f"Item inválido em 'produtos': {item}")
+
+                val_unit = item.get("valorUnidario")
+                if not val_unit:
+                    # Busca valoração do produto perdido na Nota de Perda de Origem
+                    try:
+                        from br.com.pdv.src.BDD.bancodb import BancoDB
+                        row_val = BancoDB.obter_conexao().execute(
+                            "SELECT valorUnidario FROM fluxoEstoque WHERE id_fluxo_nota = ? AND id_produto = ? LIMIT 1",
+                            (id_perda_orig, id_prod)
+                        ).fetchone()
+                        if row_val and row_val["valorUnidario"]:
+                            val_unit = float(row_val["valorUnidario"])
+                    except Exception:
+                        pass
+
+                val_unit = val_unit or cls._get_custo_medio(str(id_prod))
+
                 produto = ProductClassFactory.testar_e_fabricar(id_prod)
                 if not produto:
                     raise ValueError(f"Produto ID {id_prod} não encontrado.")
 
                 produto.insertPropertValue(valorUnidario=val_unit, quantidade=qtd)
                 notaComp.adicionarProduto(produto)
+
+                # Entrada da Reposição: id_tipoNota = 5 (REPOSIÇÃO), lucroTotal é 0.0
                 DB.INSERT.FLUXO_ESTOQUE.executar(
-                    id_perda_orig,  # id_notaOrigem = nota da perda que originou a compensação
-                    id_nota, 5, id_prod, qtd, val_unit, 0, str(data_emissao)
+                    id_perda_orig,  # id_notaOrigem = ID da Nota de Perda de Origem
+                    id_nota, 5, id_prod, qtd, val_unit, 0.0, str(data_emissao)
                 )
 
             notaComp.salvar()
@@ -784,6 +1148,64 @@ class InventoryManager:
         except Exception as e:
             print(f"[InventoryManager] Erro ao inserir nota de compensação: {e}")
             return None
+
+    @classmethod
+    def deletar_nota(cls, id_nota: int, cancelar_dependentes: bool = True) -> bool:
+        """
+        Cancela/Exclui uma nota do sistema.
+        
+        Se 'cancelar_dependentes=True' (padrão), localiza e deleta recursivamente
+        quaisquer Devoluções, Perdas ou Reposições dependentes que tenham sido geradas 
+        a partir desta nota, mantendo a integridade histórica perfeita.
+        """
+        try:
+            from br.com.pdv.src.BDD.bancodb import BancoDB
+            conn = BancoDB.obter_conexao()
+
+            nota = conn.execute("SELECT * FROM fluxosNotasEstoque WHERE id = ?", (id_nota,)).fetchone()
+            if not nota:
+                print(f"[InventoryManager] Nota ID {id_nota} não encontrada para deleção.")
+                return False
+
+            id_tipo = nota["id_tipoNota"]
+
+            # 1. Busca notas dependentes que citam 'id_nota' como id_notaOrigem em fluxoEstoque
+            rows_dep = conn.execute(
+                "SELECT DISTINCT id_fluxo_nota FROM fluxoEstoque WHERE id_notaOrigem = ? AND id_fluxo_nota != ?",
+                (id_nota, id_nota)
+            ).fetchall()
+            ids_dependentes = [r["id_fluxo_nota"] for r in rows_dep if r["id_fluxo_nota"] != id_nota]
+
+            if ids_dependentes:
+                if not cancelar_dependentes:
+                    str_deps = ", ".join([f"#{d}" for d in ids_dependentes])
+                    raise ValueError(f"Não é possível excluir a Nota #{id_nota}: existem documentos dependentes vinculados ({str_deps}).")
+                
+                # Deleta recursivamente os documentos dependentes primeiro
+                for id_dep in ids_dependentes:
+                    cls.deletar_nota(id_dep, cancelar_dependentes=True)
+
+            # 2. Se for Reposição/Compensação (tipo 5), valida se o lote já foi consumido por vendas posteriores
+            if id_tipo == 5:
+                itens_rep = conn.execute("SELECT id_produto, quantidade FROM fluxoEstoque WHERE id_fluxo_nota = ?", (id_nota,)).fetchall()
+                for r in itens_rep:
+                    id_p_str = str(r["id_produto"])
+                    mapa = cls._mapaProdutos.get(id_p_str)
+                    if mapa and mapa["quantidadeTotal"] < float(r["quantidade"]):
+                        raise ValueError(f"Não é possível cancelar a Reposição #{id_nota}: o produto ID {id_p_str} já foi consumido por vendas posteriores.")
+
+            # 3. Deleta no SQLite usando DELETE CASCADE (apaga fluxosNotasEstoque, fluxoEstoque e fluxoPagamentoNotas)
+            conn.execute("DELETE FROM fluxosNotasEstoque WHERE id = ?", (id_nota,))
+            conn.commit()
+
+            # 4. Re-carrega o estado da memória para sincronizar 100% com o banco
+            cls.carregarTudo()
+            print(f"[InventoryManager] Nota ID {id_nota} (Tipo {id_tipo}) e seus vínculos deletados com SUCESSO via CASCADE.")
+            return True
+
+        except Exception as e:
+            print(f"[InventoryManager] Erro ao deletar nota ID {id_nota}: {e}")
+            return False
 
     # ─────────────────────────────────────────────────────────────────
     # GET — Consultas e Relatórios
@@ -1322,7 +1744,7 @@ class InventoryManager:
 
             if id_tipo in (1, 5):
                 custo = prod.get("ValorTotal", 0.0)
-                custo_unit = prod.get("valorUnitario", (custo / qtd_mov) if qtd_mov > 0 else 0.0)
+                custo_unit = (custo / qtd_mov) if qtd_mov > 0 else prod.get("valorUnitario", 0.0)
                 mapa["quantidadeTotal"] += qtd_mov
                 mapa["valorTotalEstoque"] += custo
                 mapa["totalCompras"] += qtd_mov
@@ -1400,3 +1822,65 @@ class InventoryManager:
             except ValueError:
                 pass
         return None
+
+
+if False:
+    InventoryManager.carregarTudo()
+
+    # 1. Venda de 60 cartelas por R$ 20,00 (Gera Nota #6 - VENDA)
+    venda_payload = {
+        "id_cliente": 7,
+        "produtos": [
+            {"id": 6, "quantidade": 60, "valorVenda": 20.0}
+        ]
+    }
+    n_venda = InventoryManager.insert_venda(venda_payload)
+
+    # 2. Devolução direta de 30 cartelas referentes à Venda #6 (Gera Nota #7 - DEVOLUÇÃO)
+    devolucao_payload = {
+        "id_cliente": 7,
+        "id_nota_venda_origem": 6,
+        "produtos": [
+            {"id": 6, "quantidade": 30}
+        ]
+    }
+    n_dev = InventoryManager.insert_devolucao(devolucao_payload)
+
+    # 3. Perda Inteligente de 18 cartelas citando a Venda #6 (Gera Devolução #8 + Perda Pós-Devolução #9)
+    perda_payload = {
+        "id_nota_origem": 6,
+        "produtos": [
+            {"id": 6, "quantidade": 18}
+        ]
+    }
+    n_perda = InventoryManager.insert_perda(perda_payload)
+
+    # 4. Ressarcimento / Compensação Financeira referente à Perda #9 (Gera Nota #10 - COMPENSAÇÃO)
+    compensacao_payload = {
+        "id_nota_perda_origem": 9,
+        "produtos": [
+            {"id": 6, "quantidade": 18}
+        ]
+    }
+    n_comp = InventoryManager.insert_compensacao(compensacao_payload)
+
+    # 5. Perda Geral de Estoque via FIFO (Gera Nota #11 - PERDA-ESTOQUE GERAL)
+    perda_estoque_geral_payload = {
+        "origem": "ESTOQUE",
+        "produtos": [
+            {"id": 6, "quantidade": 10}
+        ]
+    }
+    n_perda_est = InventoryManager.insert_perda(perda_estoque_geral_payload)
+
+    # 6. Perda de Estoque de Lote Específico de Compra (Gera Nota #12 - PERDA-ESTOQUE LOTE #1)
+    perda_lote_especifico_payload = {
+        "id_nota_origem": 1,
+        "produtos": [
+            {"id": 1, "quantidade": 1.0}
+        ]
+    }
+    n_perda_lote = InventoryManager.insert_perda(perda_lote_especifico_payload)
+
+
+    InventoryManager.deletar_nota(6)

@@ -60,6 +60,14 @@ class UnidadeMedida(Enum):
         resultado = valor_decimal / Decimal(str(p))
         
         return float(resultado)
+
+    def normalizarQuantidade(self, valor_tela: Union[float, str], config: int = None) -> float:
+        """
+        Converte o valor recebido da tela para a escala discreta interna de inteiros
+        e converte de volta para float, eliminando imprecisões de dízimas flutuantes.
+        """
+        qtd_inteira = self.parseInt(valor_tela, config)
+        return self.parseFloat(qtd_inteira, config)
     
 
 
@@ -85,12 +93,19 @@ class UnidadeConjunto:
         return self.__unidade_base.getMultInt(self.__fator_conjunto)
 
     def parseInt(self, valor_tela: Union[float, str]) -> int:
-       
-        return self.__unidade_base.parseInt(valor_tela)
+        return self.__unidade_base.parseInt(valor_tela, self.__fator_conjunto)
     
     def parseFloat(self, valor_interno: int) -> float:
-       
-        return self.__unidade_base.parseFloat(valor_interno)
+        return self.__unidade_base.parseFloat(valor_interno, self.__fator_conjunto)
+
+    def normalizarQuantidade(self, valor_tela: Union[float, str]) -> float:
+        """
+        Converte a quantidade de conjuntos (ex: 0.083 caixas) para o número discreto
+        inteiro de unidades internas (ex: 30 ovos) e retorna a quantidade racional exata
+        em conjuntos (ex: 0.08333333333333333 caixas exatas).
+        """
+        qtd_inteira = self.parseInt(valor_tela)
+        return self.parseFloat(qtd_inteira)
         
     def getDescription(self) -> str:
         if self.__fator_conjunto:

@@ -47,3 +47,6 @@ class PurchaseNoteClassFactory:
             return notaCompra
         else:
             return None
+
+
+

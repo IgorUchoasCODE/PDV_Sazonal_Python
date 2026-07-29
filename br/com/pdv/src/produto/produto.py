@@ -111,6 +111,19 @@ class Produto:
             
         return False
 
+    def getUnidadeMedida(self) -> Union[UnidadeMedida, UnidadeConjunto]:
+        """Retorna a instância da unidade de medida do produto."""
+        return self.__UM
+
+    def normalizarQuantidade(self, quantidade: Union[float, str]) -> float:
+        """
+        Delega para a UnidadeMedida/UnidadeConjunto a normalização da quantidade exibida
+        para a escala de unidades discretas inteiras internas.
+        """
+        if hasattr(self.__UM, "normalizarQuantidade"):
+            return self.__UM.normalizarQuantidade(quantidade)
+        return float(quantidade)
+
     def alterarValores(self, instrucoes: dict) -> dict | bool:
         """
         Altera valores do produto (custo, quantidade total, acréscimo, decréscimo de estoque ou receita).
@@ -456,3 +469,18 @@ if False:
             print(f"  {k}: {v}")
     else:
         print("\n--- FALHA NA ALTERAÇÃO ---")
+
+
+
+    p = Produto(12,"cx ovo",30, UnidadeConjunto(UnidadeMedida.CONJUNTO,360))
+    p.insertPropertValue(valorUnidario=120, quantidade=1)
+
+    print("\n--- ANTES DA ALTERAÇÃO ---")
+    for k, v in p.getDados().items():
+        print(f"{k} ==> {v}")
+
+    print(p.vender(0.083,120))
+
+    print("\n--- venda ---")
+    for k, v in p.getDados().items():
+        print(f"{k} ==> {v}")

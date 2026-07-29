@@ -178,6 +178,99 @@ class ClimaAPI:
 
         return resultado
 
+    @staticmethod
+    def obter_historico_mes(start_date: str, end_date: str, cidade: str = "Manaus", rio: str = "Rio Negro (Manaus)") -> dict:
+        """
+        Baixa os dados históricos diários de clima e rios para o período informado em uma única requisição HTTP.
+        Retorna dicionário mapeado por data: { "YYYY-MM-DD": { ...indicadores... } }
+        """
+        dados_locais = ClimaAPI._carregar_dados_locais()
+        cidades = dados_locais.get("CIDADES_AMAZONAS", {})
+        rios_disponiveis = dados_locais.get("RIOS_AMAZONAS", {})
+
+        coord_cidade = cidades.get(cidade, {"lat": -3.119, "lon": -60.0217})
+        coord_rio = rios_disponiveis.get(rio, {"lat": -3.15, "lon": -60.05})
+
+        url_clima = (
+            f"https://archive-api.open-meteo.com/v1/archive?"
+            f"latitude={coord_cidade['lat']}&longitude={coord_cidade['lon']}"
+            f"&start_date={start_date}&end_date={end_date}"
+            f"&daily=temperature_2m_max,temperature_2m_min,precipitation_sum"
+            f"&timezone=America/Manaus"
+        )
+        url_rio = (
+            f"https://flood-api.open-meteo.com/v1/flood?"
+            f"latitude={coord_rio['lat']}&longitude={coord_rio['lon']}"
+            f"&start_date={start_date}&end_date={end_date}"
+            f"&daily=river_discharge"
+        )
+
+        dados_clima = ClimaAPI._fazer_requisicao(url_clima)
+        dados_rio = ClimaAPI._fazer_requisicao(url_rio)
+
+        mapa_datas = {}
+        if dados_clima and isinstance(dados_clima, dict):
+            diario = dados_clima.get("daily", {})
+            datas = diario.get("time", [])
+            t_max = diario.get("temperature_2m_max", [])
+            t_min = diario.get("temperature_2m_min", [])
+            precip = diario.get("precipitation_sum", [])
+
+            rios_diario = {}
+            if dados_rio and isinstance(dados_rio, dict):
+                rio_d = dados_rio.get("daily", {})
+                r_datas = rio_d.get("time", [])
+                r_vazao = rio_d.get("river_discharge", [])
+                for i, d in enumerate(r_datas):
+                    rios_diario[d] = r_vazao[i] if i < len(r_vazao) else 25000.0
+
+            for i, d in enumerate(datas):
+                temp_max_val = float(t_max[i]) if i < len(t_max) and t_max[i] is not None else 32.0
+                temp_min_val = float(t_min[i]) if i < len(t_min) and t_min[i] is not None else 24.0
+                temp_med = (temp_max_val + temp_min_val) / 2.0
+                precip_val = float(precip[i]) if i < len(precip) and precip[i] is not None else 0.0
+                vazao_val = float(rios_diario.get(d, 25000.0) or 25000.0)
+
+                # Indicador Clima
+                if temp_med >= 29.0:
+                    ind_clima = "QUENTE"
+                elif temp_med < 24.0:
+                    ind_clima = "FRIO"
+                else:
+                    ind_clima = "AMENO"
+
+                # Indicador Chuva
+                if precip_val > 10.0:
+                    ind_chuva = "CHUVOSO"
+                elif precip_val > 2.0:
+                    ind_chuva = "MODERADO"
+                else:
+                    ind_chuva = "SECO"
+
+                # Indicador Rio
+                if vazao_val > 7.0:
+                    ind_rio = "CHEIA"
+                elif vazao_val < 2.5 and vazao_val > 0:
+                    ind_rio = "SECA"
+                else:
+                    ind_rio = "NORMAL"
+
+                mapa_datas[d] = {
+                    "temperatura_atual": round(temp_med, 1),
+                    "temperatura_min_semana": round(temp_min_val, 1),
+                    "temperatura_max_semana": round(temp_max_val, 1),
+                    "precipitacao_mm": round(precip_val, 2),
+                    "precipitacao_previsao_semana": round(precip_val * 7, 2),
+                    "indicador_clima": ind_clima,
+                    "nivel_rio_atual": round(vazao_val, 2),
+                    "nivel_rio_previsao_semana": round(vazao_val, 2),
+                    "indicador_rio": ind_rio,
+                    "indicador_chuva": ind_chuva,
+                    "quantidade_eventos_proximos": 0
+                }
+
+        return mapa_datas
+
 
 # =================================================================
 #  TESTE DIRETO (executar: python -m br.com.pdv.src.apis.meteorologia.clima)

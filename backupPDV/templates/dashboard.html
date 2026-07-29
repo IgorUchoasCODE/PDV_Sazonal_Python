@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}Home / Dashboard — Sazonalizei{% endblock %}
+{% block page_title %}Visão Geral do Sistema & Análise Sazonal{% endblock %}
+
+{% block content %}
+<!-- CARDS DE METRICAS PRINCIPAIS -->
+<div class="grid-metrics">
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>CLIENTES CADASTRADOS</span>
+            <span>👥</span>
+        </div>
+        <div class="metric-value">{{ total_clientes }}</div>
+        <div class="metric-subtitle text-emerald">↑ +12% este mês</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>PRODUTOS NO CATÁLOGO</span>
+            <span>📦</span>
+        </div>
+        <div class="metric-value">{{ total_produtos }}</div>
+        <div class="metric-subtitle text-emerald">↑ +8% este mês</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>FATURAMENTO TOTAL</span>
+            <span>💰</span>
+        </div>
+        <div class="metric-value text-emerald">R$ {{ resumo.total_vendas|floatformat:2 }}</div>
+        <div class="metric-subtitle text-emerald">↑ +18% este mês</div>
+    </div>
+
+    <div class="metric-card">
+        <div class="metric-header">
+            <span>LUCRO BRUTO ESTIMADO</span>
+            <span>📈</span>
+        </div>
+        <div class="metric-value text-blue">R$ {{ resumo.lucro_bruto_estimado|floatformat:2 }}</div>
+        <div class="metric-subtitle">Vendas menos custos de insumos</div>
+    </div>
+</div>
+
+<!-- 🌤️ INDICADORES CLIMÁTICOS E HIDROLÓGICOS EXTERNOS (FORA DO GRÁFICO) -->
+<div class="climate-indicators-bar">
+    <div class="climate-card">
+        <div class="climate-card-icon">☀️</div>
+        <div>
+            <div class="climate-card-title">Temperatura & Sol</div>
+            <div class="climate-card-value">31°C <small style="font-size: 0.75rem; color: #16a34a;">(Quente)</small></div>
+        </div>
+    </div>
+
+    <div class="climate-card">
+        <div class="climate-card-icon">🌧️</div>
+        <div>
+            <div class="climate-card-title">Precipitação / Chuva</div>
+            <div class="climate-card-value">140mm <small style="font-size: 0.75rem; color: #2563eb;">(Média)</small></div>
+        </div>
+    </div>
+
+    <div class="climate-card">
+        <div class="climate-card-icon">🌊</div>
+        <div>
+            <div class="climate-card-title">Nível do Rio</div>
+            <div class="climate-card-value">8.4m <small style="font-size: 0.75rem; color: #0284c7;">(Navegável OK)</small></div>
+        </div>
+    </div>
+
+    <div class="climate-card">
+        <div class="climate-card-icon">📅</div>
+        <div>
+            <div class="climate-card-title">Eventos Regionais</div>
+            <div class="climate-card-value">Festa da Safra <small style="font-size: 0.75rem; color: #7c3aed;">(Demanda +25%)</small></div>
+        </div>
+    </div>
+</div>
+
+<!-- 📊 GRÁFICO ORGÂNICO COM FILTROS INTERATIVOS -->
+<div class="organic-chart-wrapper">
+    <div class="chart-filters-toolbar">
+        <div>
+            <h3 style="color: var(--brand-blue-dark); font-size: 1.2rem;">Comportamento de Vendas & Desempenho Sazonal</h3>
+            <p style="font-size: 0.82rem; color: var(--text-muted);">
+                Linhas orgânicas com suporte a filtros interativos por período e métrica.
+            </p>
+        </div>
+
+        <!-- Filtros Interativos -->
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;">
+            <div class="filter-btn-group">
+                <button class="filter-btn active" onclick="filtrarPeriodo('7d', this)">7 Dias</button>
+                <button class="filter-btn" onclick="filtrarPeriodo('30d', this)">30 Dias</button>
+                <button class="filter-btn" onclick="filtrarPeriodo('mes', this)">Mês Atual</button>
+                <button class="filter-btn" onclick="filtrarPeriodo('ano', this)">Ano</button>
+            </div>
+
+            <div class="filter-btn-group">
+                <button class="filter-btn active" onclick="filtrarMetrica('todas', this)">Todas</button>
+                <button class="filter-btn" onclick="filtrarMetrica('vendas', this)">Faturamento</button>
+                <button class="filter-btn" onclick="filtrarMetrica('lucro', this)">Lucro</button>
+            </div>
+        </div>
+    </div>
+
+    <div style="height: 320px; position: relative;">
+        <canvas id="organicChart"></canvas>
+    </div>
+</div>
+
+<!-- 🚦 TABELA DE PRODUTOS E SINALIZAÇÃO SAZONAL COM POPOVER/MODAL -->
+<div class="metric-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <div>
+            <h3 style="color: var(--brand-blue-dark); font-size: 1.2rem;">Sinalização Sazonal de Produtos (Clique no Item para Ver o Resumo)</h3>
+            <p style="font-size: 0.82rem; color: var(--text-muted);">
+                Clique ou passe o mouse na badge do produto para exibir os indicativos do período benéfico vs. desfavorável.
+            </p>
+        </div>
+        <div style="display: flex; gap: 0.75rem; font-size: 0.85rem;">
+            <span class="badge badge-green-status">🟢 Período Favorável</span>
+            <span class="badge badge-amber-status">🟡 Atenção / Giro</span>
+            <span class="badge badge-red-status">🔴 Não Favorável</span>
+        </div>
+    </div>
+
+    <div class="table-container" style="max-height: 400px; overflow-y: auto;">
+        <table class="table-custom">
+            <thead>
+                <tr>
+                    <th>Cód</th>
+                    <th>Produto</th>
+                    <th>Estoque</th>
+                    <th>Unidade</th>
+                    <th>Indicador Sazonal (Clique para Detalhes)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in catalogo %}
+                <tr>
+                    <td>#{{ p.id }}</td>
+                    <td><strong>{{ p.nome }}</strong></td>
+                    <td>{{ p.estoque }}</td>
+                    <td>{{ p.UnidadeMedida }}</td>
+                    <td>
+                        {% if p.estoque > 15 %}
+                        <button class="badge badge-green-status" style="cursor: pointer;" onclick="abrirResumoSazonal({{ p.id }})">
+                            🟢 PERÍODO FAVORÁVEL ☀️ (Ver Detalhes)
+                        </button>
+                        {% elif p.estoque > 0 %}
+                        <button class="badge badge-amber-status" style="cursor: pointer;" onclick="abrirResumoSazonal({{ p.id }})">
+                            🟡 ATENÇÃO / GIRO 📅 (Ver Detalhes)
+                        </button>
+                        {% else %}
+                        <button class="badge badge-red-status" style="cursor: pointer;" onclick="abrirResumoSazonal({{ p.id }})">
+                            🔴 PERÍODO NÃO FAVORÁVEL 🌊 (Ver Detalhes)
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- 🚦 MODAL POPOVER DE RESUMO SAZONAL DO PRODUTO -->
+<div id="modal-sazonal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 id="modal-sazonal-titulo" style="color: var(--brand-blue-dark); font-size: 1.2rem;">Resumo Sazonal do Produto</h3>
+            <button class="modal-close-btn" onclick="fecharModalSazonal()">✕</button>
+        </div>
+
+        <div id="modal-sazonal-corpo" style="display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Conteúdo dinâmico via JS AJAX -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let chartInstance = null;
+
+const dadosGrafico = {
+    '7d': { labels: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'], vendas: [1800, 2400, 2100, 3200, 4500, 5200, 3800], lucro: [600, 950, 800, 1400, 1900, 2300, 1600] },
+    '30d': { labels: ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4'], vendas: [12000, 15400, 18200, 21000], lucro: [4500, 6100, 7200, 8900] },
+    'mes': { labels: ['1-5', '6-10', '11-15', '16-20', '21-25', '26-30'], vendas: [3000, 4200, 5800, 6100, 7500, 8200], lucro: [1200, 1800, 2400, 2700, 3200, 3900] },
+    'ano': { labels: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'], vendas: [45000, 48000, 52000, 61000, 70000, 85000, 92000, 88000, 79000, 84000, 96000, 110000], lucro: [18000, 19500, 21000, 26000, 29000, 36000, 41000, 38000, 33000, 36000, 42000, 49000] }
+};
+
+let periodoAtual = '7d';
+let metricaAtual = 'todas';
+
+document.addEventListener('DOMContentLoaded', () => {
+    inicializarGrafico();
+});
+
+function inicializarGrafico() {
+    const ctx = document.getElementById('organicChart').getContext('2d');
+    const d = dadosGrafico[periodoAtual];
+
+    let datasets = [];
+    if (metricaAtual === 'todas' || metricaAtual === 'vendas') {
+        datasets.push({
+            label: 'Faturamento (Vendas R$)',
+            data: d.vendas,
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16, 185, 129, 0.12)',
+            borderWidth: 3,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 6,
+            pointBackgroundColor: '#10b981'
+        });
+    }
+
+    if (metricaAtual === 'todas' || metricaAtual === 'lucro') {
+        datasets.push({
+            label: 'Lucro Bruto (R$)',
+            data: d.lucro,
+            borderColor: '#6366f1',
+            backgroundColor: 'rgba(99, 102, 241, 0.12)',
+            borderWidth: 3,
+            tension: 0.4,
+            fill: true,
+            pointRadius: 6,
+            pointBackgroundColor: '#6366f1'
+        });
+    }
+
+    if (chartInstance) chartInstance.destroy();
+
+    chartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels: d.labels, datasets: datasets },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'top' } },
+            scales: {
+                x: { grid: { display: false } },
+                y: { grid: { color: 'rgba(203, 213, 225, 0.5)' } }
+            }
+        }
+    });
+}
+
+function filtrarPeriodo(p, btn) {
+    periodoAtual = p;
+    document.querySelectorAll('.filter-btn-group:first-child .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    inicializarGrafico();
+}
+
+function filtrarMetrica(m, btn) {
+    metricaAtual = m;
+    document.querySelectorAll('.filter-btn-group:last-child .filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    inicializarGrafico();
+}
+
+async function abrirResumoSazonal(idProduto) {
+    const modal = document.getElementById('modal-sazonal');
+    const corpo = document.getElementById('modal-sazonal-corpo');
+    const titulo = document.getElementById('modal-sazonal-titulo');
+
+    corpo.innerHTML = '<p style="color: var(--text-muted);">Carregando indicativos sazonais do produto...</p>';
+    modal.classList.add('active');
+
+    try {
+        const resp = await fetch(`/api/resumo-sazonal/${idProduto}/`);
+        const data = await resp.json();
+
+        if (data.sucesso) {
+            titulo.innerText = `Análise Sazonal — ${data.nome}`;
+            corpo.innerHTML = `
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <span class="badge badge-${data.cor.toLowerCase()}-status" style="font-size: 0.9rem;">
+                        STATUS: ${data.status}
+                    </span>
+                    <span style="font-weight: 600; color: var(--text-muted);">Estoque Atual: ${data.estoque_atual} un</span>
+                </div>
+
+                <div style="background: #ecfdf5; border: 2px solid #a7f3d0; padding: 1rem; border-radius: var(--radius-md);">
+                    <strong style="color: #065f46; display: block; margin-bottom: 0.35rem;">🟢 Indicadores de Período Benéfico:</strong>
+                    <p style="font-size: 0.9rem; color: #064e3b;">${data.motivo_benefico}</p>
+                </div>
+
+                <div style="background: #fef2f2; border: 2px solid #fecaca; padding: 1rem; border-radius: var(--radius-md);">
+                    <strong style="color: #991b1b; display: block; margin-bottom: 0.35rem;">🔴 Indicadores de Período Não Favorável:</strong>
+                    <p style="font-size: 0.9rem; color: #7f1d1d;">${data.motivo_desfavoravel}</p>
+                </div>
+
+                <div style="background: #f8fafc; border: 1px solid var(--border-color); padding: 0.85rem; border-radius: var(--radius-md); font-size: 0.85rem; color: var(--text-muted);">
+                    <div><strong>Clima Regional Atual:</strong> ${data.clima_atual}</div>
+                    <div><strong>Condição Fluvial / Rio:</strong> ${data.rio_atual}</div>
+                </div>
+            `;
+        } else {
+            corpo.innerHTML = `<p style="color: var(--brand-red-main);">${data.mensagem}</p>`;
+        }
+    } catch (err) {
+        corpo.innerHTML = `<p style="color: var(--brand-red-main);">Erro ao carregar dados: ${err}</p>`;
+    }
+}
+
+function fecharModalSazonal() {
+    document.getElementById('modal-sazonal').classList.remove('active');
+}
+</script>
+{% endblock %}

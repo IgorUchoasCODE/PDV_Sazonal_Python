@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sazonalizei — Inteligência Comercial Sazonal{% endblock %}</title>
+    <!-- Estilo Vanilla CSS Sazonalizei -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    <!-- Chart.js para Gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar NAVEGAÇÃO SAZONALIZEI -->
+        <aside class="sidebar">
+            <div class="brand">
+                <!-- LOGO SAZONALIZEI SVG (Sol ☀️, Chuva 🌧️, Rio/Embarcações 🚢 e Loja 🏪) -->
+                <svg class="brand-logo-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <!-- Segmento Vermelho Esquerdo (Sol) -->
+                    <path d="M 50 50 L 50 4 A 46 46 0 0 0 6 60 Z" fill="#d90429" stroke="#ffffff" stroke-width="2"/>
+                    <!-- Segmento Azul Direito (Chuva) -->
+                    <path d="M 50 50 L 6 60 A 46 46 0 0 0 94 60 Z" fill="#00509d" stroke="#ffffff" stroke-width="2"/>
+                    <!-- Segmento Inferior (Rio com Barcos) -->
+                    <path d="M 50 50 L 94 60 A 46 46 0 0 1 50 96 A 46 46 0 0 1 6 60 Z" fill="#f8fafc" stroke="#ffffff" stroke-width="2"/>
+                    
+                    <!-- Ícone Sol Esquerda -->
+                    <circle cx="28" cy="28" r="6" fill="#f59e0b"/>
+                    <!-- Ícone Chuva Direita -->
+                    <path d="M 70 24 Q 74 20 78 24 Q 82 24 82 28 Q 82 32 74 32 Z" fill="#ffffff"/>
+                    <line x1="72" y1="34" x2="70" y2="38" stroke="#ffffff" stroke-width="1.5"/>
+                    <line x1="77" y1="34" x2="75" y2="38" stroke="#ffffff" stroke-width="1.5"/>
+                    
+                    <!-- Embarcação / Barco no Rio -->
+                    <path d="M 30 78 L 70 78 L 65 84 L 35 84 Z" fill="#0b2545"/>
+                    
+                    <!-- Círculo Central da Loja (PDV) -->
+                    <circle cx="50" cy="50" r="22" fill="#ffffff" stroke="#00509d" stroke-width="2.5"/>
+                    <!-- Desenho da Loja / Toldo -->
+                    <path d="M 38 48 L 62 48 L 62 58 L 38 58 Z" fill="#00509d"/>
+                    <path d="M 36 44 L 64 44 L 62 48 L 38 48 Z" fill="#d90429"/>
+                    <rect x="45" y="52" width="10" height="6" fill="#ffffff"/>
+                </svg>
+
+                <div class="brand-title-group">
+                    <span class="brand-text">Sazonalizei</span>
+                    <span class="brand-tagline">Gestão & Análise Sazonal</span>
+                </div>
+            </div>
+            
+            <ul class="nav-list">
+                <li>
+                    <a href="{% url 'dashboard' %}" class="nav-link {% if pagina_atual == 'dashboard' %}active{% endif %}">
+                        <span class="nav-icon">🏠</span> Home / Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'produtos' %}" class="nav-link {% if pagina_atual == 'produtos' %}active{% endif %}">
+                        <span class="nav-icon">📦</span> Produtos
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'estoque' %}" class="nav-link {% if pagina_atual == 'estoque' %}active{% endif %}">
+                        <span class="nav-icon">🏬</span> Estoque & FIFO
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'fornecedores' %}" class="nav-link {% if pagina_atual == 'fornecedores' %}active{% endif %}">
+                        <span class="nav-icon">🚚</span> Fornecedores
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'clientes' %}" class="nav-link {% if pagina_atual == 'clientes' %}active{% endif %}">
+                        <span class="nav-icon">👤</span> Clientes
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'relatorios' %}" class="nav-link {% if pagina_atual == 'relatorios' %}active{% endif %}">
+                        <span class="nav-icon">📈</span> Relatórios Sazonalizei
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'pdv' %}" class="nav-link {% if pagina_atual == 'pdv' %}active{% endif %}">
+                        <span class="nav-icon">🛒</span> Caixa (PDV) <small>[F1]</small>
+                    </a>
+                </li>
+                <li>
+                    <a href="{% url 'financeiro' %}" class="nav-link {% if pagina_atual == 'financeiro' %}active{% endif %}">
+                        <span class="nav-icon">💳</span> Financeiro <small>[F4]</small>
+                    </a>
+                </li>
+            </ul>
+
+            <div class="sidebar-footer">
+                <p>Sazonalizei Offline Desktop</p>
+                <small>© 2026 Sistema de Gestão Sazonal</small>
+            </div>
+        </aside>
+
+        <!-- Área Principal -->
+        <main class="main-content">
+            <!-- Barra Superior -->
+            <header class="topbar">
+                <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                
+                <div class="user-badge">
+                    <span class="status-dot"></span>
+                    <span>Bem-vindo, <strong>admin!</strong></span>
+                </div>
+            </header>
+
+            <!-- Conteúdo Dinâmico -->
+            <div class="content-body">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <!-- Script Principal -->
+    <script src="{% static 'js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

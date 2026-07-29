@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}Fornecedores — Sazonalizei{% endblock %}
+{% block page_title %}Gestão de Fornecedores, Histórico de Notas e Saldo A Pagar{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
+    <!-- Cadastro de Fornecedor / Vínculo Pessoa-Empresa -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
+            🚚 Cadastrar Fornecedor & Vínculo de Representante
+        </h3>
+
+        <form id="form-fornecedor" onsubmit="cadastrarFornecedor(event)">
+            <div style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Tipo de Cadastro:</label>
+                <select id="forn-tipo" class="form-control" onchange="toggleFornCampos()" required>
+                    <option value="EMPRESA">Empresa / Pessoa Jurídica (CNPJ)</option>
+                    <option value="PESSOA">Pessoa Física (CPF)</option>
+                    <option value="VINCULO">Vínculo Pessoa + Empresa (Representante com Cargo)</option>
+                </select>
+            </div>
+
+            <div id="campo-forn-empresa" style="margin-bottom: 1rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Razão Social / Nome da Empresa:</label>
+                <input type="text" id="forn-nome-empresa" class="input-field" placeholder="Ex: Distribuidora AmBev S/A">
+            </div>
+
+            <div id="campo-forn-pessoa" style="margin-bottom: 1rem; display: none;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Nome do Representante / Fornecedor:</label>
+                <input type="text" id="forn-nome-pessoa" class="input-field" placeholder="Ex: Carlos Fornecedor Local">
+            </div>
+
+            <div style="margin-bottom: 1.25rem;">
+                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Telefone / WhatsApp Contato:</label>
+                <input type="text" id="forn-telefone" class="input-field" placeholder="(92) 99999-0000">
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                🚚 Salvar Fornecedor no Sistema
+            </button>
+        </form>
+    </div>
+
+    <!-- Tabela de Fornecedores com Histórico de Notas e Saldo -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">📋 Fornecedores & Saldo Pendente (Contas a Pagar)</h3>
+        
+        <div class="table-container" style="max-height: 500px; overflow-y: auto;">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>Entidade ID</th>
+                        <th>Fornecedor</th>
+                        <th>Tipo</th>
+                        <th>Total Compras</th>
+                        <th>Pago</th>
+                        <th>Saldo A Pagar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for f in fornecedores %}
+                    <tr>
+                        <td>#{{ f.id_entidade }}</td>
+                        <td>
+                            <strong>{{ f.empresa_nome|default:f.pessoa_nome }}</strong>
+                            {% if f.pessoa_nome and f.empresa_nome %}
+                            <div style="font-size: 0.75rem; color: #64748b;">Representante: {{ f.pessoa_nome }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge {% if f.id_empresa %}badge-emerald{% else %}badge-blue{% endif %}">
+                                {% if f.tipo_entidade %}{{ f.tipo_entidade }}{% else %}FORNECEDOR{% endif %}
+                            </span>
+                        </td>
+                        <td>R$ {{ f.extrato.resumo.total_compras|default:"0.00"|floatformat:2 }}</td>
+                        <td>R$ {{ f.extrato.resumo.pagamentos_efetuados|default:"0.00"|floatformat:2 }}</td>
+                        <td class="text-rose"><strong>R$ {{ f.extrato.resumo.contas_a_pagar|default:"0.00"|floatformat:2 }}</strong></td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" style="text-align: center; color: var(--text-muted);">Nenhum fornecedor cadastrado...</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleFornCampos() {
+    const tipo = document.getElementById('forn-tipo').value;
+    const fE = document.getElementById('campo-forn-empresa');
+    const fP = document.getElementById('campo-forn-pessoa');
+
+    if (tipo === 'EMPRESA') {
+        fE.style.display = 'block'; fP.style.display = 'none';
+    } else if (tipo === 'PESSOA') {
+        fE.style.display = 'none'; fP.style.display = 'block';
+    } else if (tipo === 'VINCULO') {
+        fE.style.display = 'block'; fP.style.display = 'block';
+    }
+}
+
+async function cadastrarFornecedor(e) {
+    e.preventDefault();
+    const tipo = document.getElementById('forn-tipo').value;
+    const nomeE = document.getElementById('forn-nome-empresa').value;
+    const nomeP = document.getElementById('forn-nome-pessoa').value;
+    const tel = document.getElementById('forn-telefone').value;
+
+    const payload = {
+        tipo: tipo,
+        is_fornecedor: true,
+        contatos: { "TELEFONE": tel }
+    };
+
+    if (tipo === 'EMPRESA') payload.nome = nomeE;
+    else if (tipo === 'PESSOA') payload.nome = nomeP;
+    else if (tipo === 'VINCULO') {
+        payload.empresa = { nome: nomeE };
+        payload.pessoa = { nome: nomeP };
+    }
+
+    try {
+        const resp = await fetch('/api/cadastrar-entidade/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const res = await resp.json();
+        if (res.sucesso) {
+            alert("✅ Fornecedor cadastrado com sucesso!");
+            window.location.reload();
+        } else {
+            alert(`❌ Erro: ${res.mensagem}`);
+        }
+    } catch (err) {
+        alert(`❌ Erro: ${err}`);
+    }
+}
+</script>
+{% endblock %}

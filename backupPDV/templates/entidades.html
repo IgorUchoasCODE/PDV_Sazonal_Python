@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+
+{% block title %}Entidades & Cargos — PDV Sazonal{% endblock %}
+{% block page_title %}Cadastro de Pessoas, Empresas e Cargos (3 Entidades){% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
+    <!-- Formulário Unificado de Cadastro -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+            👤 Novo Cadastro de Entidade / Vínculo
+        </h3>
+
+        <form id="form-entidade" onsubmit="salvarEntidade(event)">
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">Tipo de Cadastro:</label>
+                <select id="ent-tipo" class="form-control" onchange="alternarCampos()" required>
+                    <option value="PESSOA">Pessoa Física (Pessoa Pura)</option>
+                    <option value="EMPRESA">Pessoa Jurídica (Empresa Pura)</option>
+                    <option value="VINCULO">Vínculo Pessoa + Empresa (Com Cargo)</option>
+                </select>
+            </div>
+
+            <!-- Campos Pessoa -->
+            <div id="campo-pessoa-nome" style="margin-bottom: 1rem;">
+                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">Nome da Pessoa:</label>
+                <input type="text" id="ent-nome-pessoa" class="input-field" placeholder="Ex: João da Silva">
+            </div>
+
+            <!-- Campos Empresa -->
+            <div id="campo-empresa-nome" style="margin-bottom: 1rem; display: none;">
+                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">Razão Social / Nome da Empresa:</label>
+                <input type="text" id="ent-nome-empresa" class="input-field" placeholder="Ex: Distribuidora Alfa LTDA">
+            </div>
+
+            <!-- Campo Cargo (para Vínculo) -->
+            <div id="campo-cargo" style="margin-bottom: 1rem; display: none;">
+                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">Cargo na Empresa:</label>
+                <select id="ent-cargo" class="form-control">
+                    {% for c in cargos %}
+                    <option value="{{ c.id }}">{{ c.descricao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <!-- Opções Simultâneas -->
+            <div style="margin-bottom: 1.25rem; background: rgba(15, 23, 42, 0.5); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
+                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600;">
+                    Papéis da Entidade (Pode selecionar as 3 opções simultaneamente):
+                </label>
+                <div style="display: flex; gap: 1rem;">
+                    <label><input type="checkbox" id="chk-cliente"> Cliente</label>
+                    <label><input type="checkbox" id="chk-fornecedor"> Fornecedor</label>
+                    <label><input type="checkbox" id="chk-funcionario"> Funcionário</label>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary" style="width: 100%;">
+                💾 Salvar Entidade
+            </button>
+        </form>
+    </div>
+
+    <!-- Tabela de Entidades Cadastradas -->
+    <div class="metric-card">
+        <h3 style="margin-bottom: 1rem;">👥 Entidades Registradas no Sistema</h3>
+
+        <div class="table-container" style="max-height: 480px; overflow-y: auto;">
+            <table class="table-custom">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Tipo</th>
+                        <th>Nome / Vínculo</th>
+                        <th>Papéis</th>
+                        <th>Cargo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in entidades %}
+                    <tr>
+                        <td>#{{ e.id_entidade }}</td>
+                        <td>
+                            <span class="badge {% if e.tipo_entidade == 'PESSOA_PURA' %}badge-blue{% elif e.tipo_entidade == 'EMPRESA_PURA' %}badge-emerald{% else %}badge-purple{% endif %}">
+                                {{ e.tipo_entidade }}
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ e.pessoa_nome|default:e.empresa_nome }}</strong>
+                            {% if e.pessoa_nome and e.empresa_nome %}
+                            <div style="font-size: 0.75rem; color: #94a3b8;">Empresa: {{ e.empresa_nome }}</div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <small>
+                                {% if e.is_cliente %}Client {% endif %}
+                                {% if e.is_fornecedor %}Forn {% endif %}
+                                {% if e.is_funcionario %}Func{% endif %}
+                            </small>
+                        </td>
+                        <td>
+                            {% for c in e.cargos %}
+                            <span class="badge badge-purple">{{ c.descricao }}</span>
+                            {% empty %}
+                            <span style="color: #64748b;">-</span>
+                            {% endfor %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function alternarCampos() {
+    const tipo = document.getElementById('ent-tipo').value;
+    const fPessoa = document.getElementById('campo-pessoa-nome');
+    const fEmpresa = document.getElementById('campo-empresa-nome');
+    const fCargo = document.getElementById('campo-cargo');
+
+    if (tipo === 'PESSOA') {
+        fPessoa.style.display = 'block';
+        fEmpresa.style.display = 'none';
+        fCargo.style.display = 'none';
+    } else if (tipo === 'EMPRESA') {
+        fPessoa.style.display = 'none';
+        fEmpresa.style.display = 'block';
+        fCargo.style.display = 'none';
+    } else if (tipo === 'VINCULO') {
+        fPessoa.style.display = 'block';
+        fEmpresa.style.display = 'block';
+        fCargo.style.display = 'block';
+    }
+}
+
+async function salvarEntidade(e) {
+    e.preventDefault();
+
+    const tipo = document.getElementById('ent-tipo').value;
+    const nomePessoa = document.getElementById('ent-nome-pessoa').value.trim();
+    const nomeEmpresa = document.getElementById('ent-nome-empresa').value.trim();
+    const cargoId = parseInt(document.getElementById('ent-cargo').value);
+
+    const payload = {
+        tipo: tipo,
+        is_cliente: document.getElementById('chk-cliente').checked,
+        is_fornecedor: document.getElementById('chk-fornecedor').checked,
+        is_funcionario: document.getElementById('chk-funcionario').checked
+    };
+
+    if (tipo === 'PESSOA') {
+        payload.nome = nomePessoa;
+    } else if (tipo === 'EMPRESA') {
+        payload.nome = nomeEmpresa;
+    } else if (tipo === 'VINCULO') {
+        payload.pessoa = { nome: nomePessoa };
+        payload.empresa = { nome: nomeEmpresa };
+        payload.cargo = cargoId;
+    }
+
+    try {
+        const resp = await fetch('/api/cadastrar-entidade/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const res = await resp.json();
+
+        if (res.sucesso) {
+            alert(`✅ ${res.mensagem}`);
+            window.location.reload();
+        } else {
+            alert(`❌ Erro: ${res.mensagem}`);
+        }
+    } catch (err) {
+        alert(`❌ Erro ao salvar: ${err}`);
+    }
+}
+</script>
+{% endblock %}
