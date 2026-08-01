@@ -303,6 +303,8 @@ class BancoDB:
                 indicador_rio TEXT CHECK(indicador_rio IN ('SECA','NORMAL','CHEIA')),
                 indicador_chuva TEXT CHECK(indicador_chuva IN ('SECO','MODERADO','CHUVOSO')),
                 qtd_eventos_proximos INTEGER DEFAULT 0,
+                evento_tipo TEXT CHECK(evento_tipo IN ('PUBLICO', 'PRIVADO', 'NENHUM')) DEFAULT 'NENHUM',
+                evento_nome TEXT,
                 FOREIGN KEY (id_fluxo_nota) REFERENCES fluxosNotasEstoque(id) ON DELETE CASCADE
             );
 

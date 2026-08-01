@@ -220,9 +220,9 @@ def processar_excel():
                 # Pagamento e acerto de caixa
                 if valor_total > 0:
                     pay_payload = {
-                        "id_venda": id_nota,
-                        "data_pagamento": data_str,
-                        "id_tipo_pagamento": 1,
+                        "id_fluxo_nota": id_nota,
+                        "data": data_str,
+                        "id_forma_pagamento": 1,
                         "valor": valor_total
                     }
                     PaymentManager.registrar_pagamento(pay_payload)
@@ -234,14 +234,15 @@ def processar_excel():
                             pagamento = min(saldo_caixa, d["restante"])
                             pay_forn_payload = {
                                 "id_fluxo_nota": d["id_fluxo_nota"],
-                                "data_pagamento": data_str,
-                                "id_tipo_pagamento": 1,
+                                "data": data_str,
+                                "id_forma_pagamento": 1,
                                 "valor": pagamento
                             }
                             PaymentManager.registrar_pagamento(pay_forn_payload)
                             d["restante"] -= pagamento
+                            saldo_caixa -= pagamento
                 sucessos += 1
-                print(f" -> Perda inserida: Data {data_str} | Nota ID: {last_inserted_nota_id}")
+                print(f" -> Pagamentos processados para Venda ID: {last_inserted_nota_id}")
             else:
                 erros += 1
 

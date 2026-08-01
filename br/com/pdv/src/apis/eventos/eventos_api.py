@@ -439,6 +439,38 @@ class EventosAPI:
         todos = self.obter_todos_eventos(limite)
         return [ev for ev in todos if ev.tipo == "privado"]
 
+    # Cache em memória para eventos agrupados por mês ("YYYY-MM")
+    _cache_mensal = {}
+
+    def obter_eventos_do_mes(self, ano: int, mes: int, limite: int = 50) -> list[Evento]:
+        """
+        Retorna eventos de um mês específico, usando cache para evitar chamadas repetidas.
+        A primeira chamada do mês vai na API; as seguintes leem da memória.
+        """
+        chave_cache = f"{ano:04d}-{mes:02d}"
+        
+        if chave_cache in self._cache_mensal:
+            return self._cache_mensal[chave_cache]
+            
+        print(f"[EventosAPI] Cache miss para {chave_cache}. Buscando na API...")
+        
+        todos = self.obter_todos_eventos(limite)
+        filtrados = []
+        
+        for ev in todos:
+            if not ev.data_inicio:
+                continue
+            try:
+                dt_evento = datetime.strptime(ev.data_inicio, "%Y-%m-%d").date()
+                if dt_evento.year == ano and dt_evento.month == mes:
+                    filtrados.append(ev)
+            except ValueError:
+                continue
+                
+        # Salva no cache da classe
+        self.__class__._cache_mensal[chave_cache] = filtrados
+        return filtrados
+
     def obter_eventos_por_data(
         self,
         data_inicio: str,
@@ -447,23 +479,27 @@ class EventosAPI:
     ) -> list[Evento]:
         """
         Filtra eventos que ocorrem dentro do intervalo de datas informado.
-
-        Args:
-            data_inicio: Data inicial no formato "YYYY-MM-DD".
-            data_fim: Data final no formato "YYYY-MM-DD".
-            limite: Limite de registros por fonte.
-
-        Returns:
-            Lista de Evento dentro do intervalo.
+        Aproveita o cache mensal para não chamar a API múltiplas vezes.
         """
-        todos = self.obter_todos_eventos(limite)
-
         try:
             dt_inicio = datetime.strptime(data_inicio, "%Y-%m-%d").date()
             dt_fim = datetime.strptime(data_fim, "%Y-%m-%d").date()
         except ValueError:
             print("[EventosAPI] Formato de data inválido. Use YYYY-MM-DD.")
             return []
+
+        # Determina os meses envolvidos no intervalo
+        meses_envolvidos = set()
+        dt_atual = dt_inicio
+        while dt_atual <= dt_fim:
+            meses_envolvidos.add((dt_atual.year, dt_atual.month))
+            # Pula pro próximo mês (simplificado)
+            dt_prox = dt_atual.replace(day=28) + timedelta(days=4)
+            dt_atual = dt_prox.replace(day=1)
+            
+        todos = []
+        for ano, mes in meses_envolvidos:
+            todos.extend(self.obter_eventos_do_mes(ano, mes, limite))
 
         filtrados = []
         for ev in todos:

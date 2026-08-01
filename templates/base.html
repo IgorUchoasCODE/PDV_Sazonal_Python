@@ -139,6 +139,17 @@
 
     <!-- Script Principal -->
     <script src="{% static 'js/main.js' %}"></script>
+    <script>
+        // ── Ripple Global em todos os botões ─────────────────────────────────
+        document.addEventListener('click', function(e) {
+            const btn = e.target.closest('.btn');
+            if (!btn) return;
+            btn.classList.remove('rippling');
+            void btn.offsetWidth; // force reflow
+            btn.classList.add('rippling');
+            btn.addEventListener('animationend', () => btn.classList.remove('rippling'), { once: true });
+        });
+    </script>
     {% block extra_js %}{% endblock %}
 </body>
 </html>

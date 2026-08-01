@@ -4,114 +4,176 @@
 {% block page_title %}Gestão e Cadastro Dedicado de Produtos{% endblock %}
 
 {% block content %}
-<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
-    <!-- Formulário Dedicado de Cadastro de Produto -->
-    <div class="metric-card">
-        <h3 style="margin-bottom: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
-            📦 Cadastrar Novo Produto / Unidade de Conjunto
-        </h3>
+<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; align-items: start;">
 
-        <form id="form-novo-produto" onsubmit="cadastrarProduto(event)">
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Nome do Produto:</label>
-                <input type="text" id="prod-nome" class="input-field" placeholder="Ex: REFRIGERANTE GUARANÁ 2L" required>
+    <!-- Lado Esquerdo: Cadastros -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+
+        <!-- Formulário Dedicado de Cadastro de Produto -->
+        <div class="metric-card"
+            style="background: #e5e7eb; border: none; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 1.5rem;">
+            <div class="metric-header" style="margin-bottom: 1.25rem;">
+                <span style="font-size: 1.1rem; font-weight: 800; color: var(--brand-blue-dark);">📦 PRODUTO (SIMPLES /
+                    CONJUNTO)</span>
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Dias Duráveis (Validade):</label>
-                    <input type="number" id="prod-dias" class="input-field" value="365" required>
+            <form id="form-novo-produto" onsubmit="cadastrarProduto(event)">
+                <div style="margin-bottom: 1.25rem;">
+                    <label
+                        style="display: block; font-size: 0.95rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem;">Nome
+                        do Produto:</label>
+                    <input type="text" id="prod-nome" class="input-field" placeholder="Ex: REFRIGERANTE GUARANÁ 2L"
+                        required
+                        style="border-color: #cbd5e1; background: #fff; padding: 0.75rem; font-size: 1rem; width: 100%; border-radius: 6px;">
                 </div>
-                <div>
-                    <label style="display: block; font-size: 0.85rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Unidade de Medida:</label>
-                    <select id="prod-unidade" class="form-control" required>
-                        {% for u in unidades %}
-                        <option value="{{ u.id }}">{{ u.descricao }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
 
-            <!-- OPÇÃO DE UNIDADE DE CONJUNTO E FATOR CONJUNTO -->
-            <div style="background: #f8fafc; border: 2px solid #cbd5e1; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.9rem; color: var(--brand-blue-dark); cursor: pointer; margin-bottom: 0.5rem;">
-                    <input type="checkbox" id="chk-conjunto" onchange="toggleFatorConjunto()">
-                    É Unidade de Conjunto? (Ex: Caixa, Fardo, Dúzia)
-                </label>
-
-                <div id="box-fator-conjunto" style="display: none; margin-top: 0.75rem;">
-                    <label style="display: block; font-size: 0.82rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">
-                        Fator Conjunto (Quantidade de Itens no Conjunto):
-                    </label>
-                    <input type="number" id="prod-fator-conjunto" step="1" class="input-field" value="12" placeholder="Ex: 12 (Caixa c/ 12 unidades)">
-                </div>
-            </div>
-
-            <!-- Entrada Opcional de Estoque via Nota de Compra Inicial -->
-            <div style="background: #ecfdf5; border: 2px solid #a7f3d0; padding: 1rem; border-radius: var(--radius-md); margin-bottom: 1.25rem;">
-                <label style="display: flex; align-items: center; gap: 0.5rem; font-weight: 700; font-size: 0.9rem; color: #065f46; cursor: pointer; margin-bottom: 0.5rem;">
-                    <input type="checkbox" id="chk-estoque-inicial" onchange="toggleEstoqueInicial()">
-                    Dar Entrada de Estoque Inicial Agora (Nota de Compra)?
-                </label>
-
-                <div id="box-estoque-inicial" style="display: none; margin-top: 0.75rem;">
-                    <div style="margin-bottom: 0.75rem;">
-                        <label style="font-size: 0.8rem; font-weight: 700; color: #064e3b;">Fornecedor:</label>
-                        <select id="prod-fornecedor" class="form-control">
-                            {% for f in fornecedores %}
-                            <option value="{{ f.id_entidade }}">{{ f.empresa_nome|default:f.pessoa_nome }}</option>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.25rem;">
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.95rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem;">Dias
+                            Duráveis (Validade):</label>
+                        <input type="number" id="prod-dias" class="input-field" value="365" required
+                            style="border-color: #cbd5e1; background: #fff; padding: 0.75rem; font-size: 1rem; width: 100%; border-radius: 6px;">
+                    </div>
+                    <div>
+                        <label
+                            style="display: block; font-size: 0.95rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem;">Unidade
+                            de Medida:</label>
+                        <select id="prod-unidade" class="form-control" required
+                            style="border-color: #cbd5e1; background: #fff; padding: 0.75rem; font-size: 1rem; width: 100%; border-radius: 6px;">
+                            {% for u in unidades %}
+                            <option value="{{ u.id }}">{{ u.descricao }}</option>
                             {% endfor %}
                         </select>
                     </div>
+                </div>
 
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-                        <div>
-                            <label style="font-size: 0.8rem; font-weight: 700; color: #064e3b;">Qtd Entrada:</label>
-                            <input type="number" id="prod-qtd-inicial" class="input-field" value="50">
-                        </div>
-                        <div>
-                            <label style="font-size: 0.8rem; font-weight: 700; color: #064e3b;">Custo Unitário (R$):</label>
-                            <input type="number" id="prod-custo-inicial" step="0.01" class="input-field" value="10.00">
-                        </div>
+                <!-- TIPO DE PRODUTO: SIMPLES OU COMPOSTO -->
+                <div style="margin-bottom: 1.25rem;">
+                    <label
+                        style="display: block; font-size: 0.95rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem;">Tipo
+                        de Produto:</label>
+                    <select id="prod-tipo" class="form-control" onchange="toggleTipoProduto()"
+                        style="border-color: #cbd5e1; background: #fff; padding: 0.75rem; font-size: 1rem; width: 100%; border-radius: 6px;">
+                        <option value="simples">Produto Simples (Venda / Matéria-prima)</option>
+                        <option value="composto">Produto Composto (Ficha Técnica - Ex: Hambúrguer)</option>
+                    </select>
+                </div>
+
+                <!-- OPÇÃO DE UNIDADE DE CONJUNTO E FATOR CONJUNTO -->
+                <div id="box-conjunto"
+                    style="background: rgba(255,255,255,0.8); border: 2px solid #cbd5e1; padding: 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <label
+                        style="display: flex; align-items: center; gap: 0.75rem; font-weight: 700; font-size: 1rem; color: var(--brand-blue-dark); cursor: pointer; margin-bottom: 0.5rem;">
+                        <input type="checkbox" id="chk-conjunto" onchange="toggleFatorConjunto()"
+                            style="width: 1.2rem; height: 1.2rem;">
+                        É Unidade de Conjunto? (Caixa, Fardo)
+                    </label>
+
+                    <div id="box-fator-conjunto"
+                        style="display: none; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #cbd5e1;">
+                        <label
+                            style="display: block; font-size: 0.95rem; font-weight: 700; color: var(--text-muted); margin-bottom: 0.5rem;">
+                            Fator Conjunto (Quantidade no Conjunto):
+                        </label>
+                        <input type="number" id="prod-fator-conjunto" step="1" class="input-field" value="12"
+                            placeholder="Ex: 12" style="padding: 0.75rem; font-size: 1rem; width: 100%;">
                     </div>
                 </div>
-            </div>
 
-            <button type="submit" class="btn btn-red" style="width: 100%;">
-                📦 Cadastrar Produto no Sistema
-            </button>
-        </form>
+                <!-- ÁREA PARA PRODUTO COMPOSTO (INGREDIENTES) -->
+                <div id="box-ingredientes"
+                    style="display: none; background: rgba(236, 253, 245, 0.6); border: 2px solid var(--emerald); padding: 1.25rem; border-radius: var(--radius-md); margin-bottom: 1.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    <label style="display: block; font-weight: 800; color: #065f46; margin-bottom: 0.5rem;">Adicionar
+                        Ingrediente à Ficha Técnica</label>
+                    <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 0.5rem;">
+                        <select id="comp-ingrediente" class="form-control" style="background: #fff; padding: 0.5rem;">
+                            {% for p in catalogo %}
+                            <option value="{{ p.id }}">{{ p.nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="number" id="comp-qtd" class="input-field" placeholder="Qtd" step="0.001"
+                            min="0.001" style="background: #fff; padding: 0.5rem;">
+                        <button type="button" class="btn btn-emerald" onclick="adicionarIngrediente()"
+                            style="padding: 0.5rem 1rem;">+</button>
+                    </div>
+
+                    <table style="width: 100%; margin-top: 1rem; font-size: 0.9rem;" id="tabela-ingredientes">
+                        <thead>
+                            <tr style="border-bottom: 2px solid #a7f3d0; text-align: left;">
+                                <th style="padding-bottom: 0.5rem; color: #065f46;">Ingrediente</th>
+                                <th style="padding-bottom: 0.5rem; color: #065f46;">Qtd</th>
+                                <th style="padding-bottom: 0.5rem; text-align: right;">Ação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-ingredientes">
+                            <!-- Ingredientes adicionados via JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <button type="submit" class="btn btn-red" style="width: 100%; font-size: 0.95rem; font-weight: 800;">
+                    💾 Cadastrar Produto (BD)
+                </button>
+            </form>
+        </div>
     </div>
 
     <!-- Catálogo Completo de Produtos -->
-    <div class="metric-card">
-        <h3 style="margin-bottom: 1rem;">📋 Catálogo de Produtos Registrados</h3>
-        
-        <div class="table-container" style="max-height: 520px; overflow-y: auto;">
+    <div class="metric-card"
+        style="background: #ffffff; border: none; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); padding: 1.5rem; height: 100%;">
+        <div class="metric-header"
+            style="margin-bottom: 1.25rem; border-bottom: 2px solid #f1f5f9; padding-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 1.1rem; font-weight: 800; color: var(--text-main);">📋 CATÁLOGO DE PRODUTOS</span>
+            <input type="text" id="search-produtos" placeholder="🔍 Buscar por nome ou código..." class="input-field"
+                style="width: 300px; padding: 0.5rem 0.75rem;" onkeyup="filtrarCatalogo()">
+        </div>
+
+        <div class="table-container" style="max-height: calc(100vh - 200px); overflow-y: auto;">
             <table class="table-custom">
                 <thead>
                     <tr>
-                        <th>Cód</th>
-                        <th>Produto</th>
-                        <th>Estoque</th>
-                        <th>Unidade</th>
-                        <th>Ações</th>
+                        <th style="color: var(--brand-blue-dark);">Cód</th>
+                        <th style="color: var(--brand-blue-dark);">Produto</th>
+                        <th style="color: var(--brand-blue-dark);">Estoque</th>
+                        <th style="color: var(--brand-blue-dark);">Unidade</th>
+                        <th style="color: var(--brand-blue-dark);">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for p in catalogo %}
-                    <tr>
-                        <td>#{{ p.id }}</td>
-                        <td><strong>{{ p.nome }}</strong></td>
+                    <tr class="linha-produto" data-nome="{{ p.nome|lower }}" data-id="{{ p.id }}"
+                        style="transition: all 0.2s ease;">
                         <td>
-                            <span class="badge {% if p.estoque > 10 %}badge-green-status{% else %}badge-amber-status{% endif %}">
-                                {{ p.estoque }}
+                            <span
+                                style="background: #f1f5f9; padding: 0.25rem 0.5rem; border-radius: 6px; color: var(--text-muted); font-size: 0.85rem; font-weight: 700;">
+                                #{{ p.id }}
                             </span>
                         </td>
-                        <td>{{ p.UnidadeMedida }}</td>
+                        <td><strong style="color: var(--navy-800);">{{ p.nome }}</strong></td>
                         <td>
-                            <button class="btn btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.8rem;" onclick="editarProduto({{ p.id }}, '{{ p.nome }}')">
+                            <span
+                                class="badge {% if p.estoque > 10 %}badge-green-status{% else %}badge-amber-status{% endif %}"
+                                style="font-size: 0.9rem; padding: 0.35rem 0.65rem;">
+                                {{ p.estoque|floatformat:2 }}
+                            </span>
+                        </td>
+                        <td>
+                            <span
+                                style="background: #e2e8f0; color: var(--navy-800); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 700; border: 1px solid #cbd5e1;">
+                                {{ p.desc_unidade|default:"UN" }}
+                            </span>
+                        </td>
+                        <td style="display: flex; gap: 0.5rem; justify-content: flex-start;">
+                            <button class="btn btn-secondary"
+                                style="padding: 0.35rem 0.65rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.25rem;"
+                                onclick="abrirModalEdicao({{ p.id }}, '{{ p.nome|escapejs }}', {{ p.diasDuraveis|default:365 }})">
                                 ✏️ Editar
+                            </button>
+                            <button class="btn btn-red"
+                                style="padding: 0.35rem 0.65rem; font-size: 0.8rem; display: flex; align-items: center; gap: 0.25rem;"
+                                onclick="apagarProduto({{ p.id }}, '{{ p.nome|escapejs }}')">
+                                🗑️ Apagar
                             </button>
                         </td>
                     </tr>
@@ -121,77 +183,281 @@
         </div>
     </div>
 </div>
+
+<!-- Modais Adicionais (Criados via tag Dialog) -->
+<style>
+    dialog {
+        border: none;
+        border-radius: 8px;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        padding: 1.5rem;
+        max-width: 500px;
+        width: 100%;
+        margin: auto;
+    }
+
+    dialog::backdrop {
+        background: rgba(0, 0, 0, 0.5);
+        backdrop-filter: blur(2px);
+    }
+
+    .dialog-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 0.75rem;
+        margin-bottom: 1rem;
+    }
+
+    .dialog-title {
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: var(--navy-800);
+    }
+
+    .btn-close {
+        background: transparent;
+        border: none;
+        font-size: 1.25rem;
+        cursor: pointer;
+        color: var(--text-muted);
+    }
+
+    .btn-close:hover {
+        color: var(--red);
+    }
+</style>
+
+<!-- MODAL DE EDIÇÃO DE PRODUTO -->
+<dialog id="modal-edicao">
+    <div class="dialog-header">
+        <span class="dialog-title">✏️ Editar Produto #<span id="edicao-id-display"></span></span>
+        <button class="btn-close" onclick="fecharModalEdicao()">×</button>
+    </div>
+    <form id="form-edicao" onsubmit="salvarEdicaoProduto(event)">
+        <input type="hidden" id="edicao-id">
+        <div style="margin-bottom: 1rem;">
+            <label
+                style="display: block; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Nome:</label>
+            <input type="text" id="edicao-nome" class="input-field" required style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+            <label style="display: block; font-weight: 700; color: var(--text-muted); margin-bottom: 0.35rem;">Dias
+                Duráveis:</label>
+            <input type="number" id="edicao-dias" class="input-field" required style="width: 100%;">
+        </div>
+
+        <div style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 0.5rem;">
+            <button type="button" class="btn btn-secondary" onclick="fecharModalEdicao()">Cancelar</button>
+            <button type="submit" class="btn btn-blue">💾 Salvar Alterações</button>
+        </div>
+    </form>
+</dialog>
+
+<!-- Modal de edição termina aqui, modais composto e nota de compra removidos -->
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function toggleFatorConjunto() {
-    const chk = document.getElementById('chk-conjunto').checked;
-    document.getElementById('box-fator-conjunto').style.display = chk ? 'block' : 'none';
-}
+    function toggleFatorConjunto() {
+        const chk = document.getElementById('chk-conjunto').checked;
+        document.getElementById('box-fator-conjunto').style.display = chk ? 'block' : 'none';
+    }
 
-function toggleEstoqueInicial() {
-    const chk = document.getElementById('chk-estoque-inicial').checked;
-    document.getElementById('box-estoque-inicial').style.display = chk ? 'block' : 'none';
-}
-
-async function cadastrarProduto(e) {
-    e.preventDefault();
-    const nome = document.getElementById('prod-nome').value.trim();
-    const dias = parseInt(document.getElementById('prod-dias').value);
-    const idUnidade = parseInt(document.getElementById('prod-unidade').value);
-    const isConjunto = document.getElementById('chk-conjunto').checked;
-    const fatorConjunto = parseFloat(document.getElementById('prod-fator-conjunto').value) || 1.0;
-
-    const payload = {
-        nome: nome,
-        diasDuraveis: dias,
-        id_unidade: idUnidade,
-        is_conjunto: isConjunto,
-        fator_conjunto: fatorConjunto
-    };
-
-    try {
-        const resp = await fetch('/api/cadastrar-produto/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const res = await resp.json();
-
-        if (res.sucesso) {
-            // Se houver estoque inicial informado via Nota de Compra
-            if (document.getElementById('chk-estoque-inicial').checked) {
-                const fornId = parseInt(document.getElementById('prod-fornecedor').value);
-                const qtd = parseFloat(document.getElementById('prod-qtd-inicial').value);
-                const custo = parseFloat(document.getElementById('prod-custo-inicial').value);
-
-                await fetch('/api/comprar/', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        id_fornecedor: fornId,
-                        data: new Date().toISOString().split('T')[0],
-                        produtos: [{ id: res.id_produto, quantidade: qtd, valorUnidario: custo }]
-                    })
-                });
-            }
-
-            alert(`✅ Produto '${nome}' cadastrado com sucesso!`);
-            window.location.reload();
+    function toggleTipoProduto() {
+        const tipo = document.getElementById('prod-tipo').value;
+        if (tipo === 'composto') {
+            document.getElementById('box-conjunto').style.display = 'none';
+            document.getElementById('box-ingredientes').style.display = 'block';
         } else {
-            alert(`❌ Erro ao cadastrar produto: ${res.mensagem}`);
+            document.getElementById('box-conjunto').style.display = 'block';
+            document.getElementById('box-ingredientes').style.display = 'none';
         }
-    } catch (err) {
-        alert(`❌ Erro: ${err}`);
     }
-}
 
-function editarProduto(id, nome) {
-    const novoNome = prompt(`Editar nome do Produto #${id}:`, nome);
-    if (novoNome && novoNome.trim() !== "") {
-        alert(`✅ Produto #${id} atualizado para '${novoNome}'!`);
+    function filtrarCatalogo() {
+        const term = document.getElementById('search-produtos').value.toLowerCase();
+        const linhas = document.querySelectorAll('.linha-produto');
+        linhas.forEach(linha => {
+            const nome = linha.getAttribute('data-nome');
+            const id = linha.getAttribute('data-id');
+            if (nome.includes(term) || id.includes(term)) {
+                linha.style.display = '';
+            } else {
+                linha.style.display = 'none';
+            }
+        });
     }
-}
+
+    // ==========================================
+    // INGREDIENTES (FICHA TÉCNICA)
+    // ==========================================
+    let ingredientes = [];
+
+    function adicionarIngrediente() {
+        const select = document.getElementById('comp-ingrediente');
+        const idProd = parseInt(select.value);
+        const nomeProd = select.options[select.selectedIndex].text;
+        const qtd = parseFloat(document.getElementById('comp-qtd').value);
+
+        if (isNaN(qtd) || qtd <= 0) {
+            alert("Quantidade inválida.");
+            return;
+        }
+
+        // Verifica se já existe, se sim, soma a quantidade
+        const existente = ingredientes.find(i => i.id === idProd);
+        if (existente) {
+            existente.qtd += qtd;
+        } else {
+            ingredientes.push({ id: idProd, nome: nomeProd, qtd: qtd });
+        }
+
+        document.getElementById('comp-qtd').value = '';
+        atualizarTabelaIngredientes();
+    }
+
+    function removerIngrediente(idx) {
+        ingredientes.splice(idx, 1);
+        atualizarTabelaIngredientes();
+    }
+
+    function atualizarTabelaIngredientes() {
+        const tbody = document.getElementById('lista-ingredientes');
+        tbody.innerHTML = '';
+        ingredientes.forEach((ing, i) => {
+            tbody.innerHTML += `
+            <tr style="border-bottom: 1px solid #e2e8f0;">
+                <td style="padding: 0.5rem 0;">${ing.nome}</td>
+                <td style="padding: 0.5rem 0;">${ing.qtd}</td>
+                <td style="padding: 0.5rem 0; text-align: right;">
+                    <button type="button" class="btn btn-secondary" style="padding: 0.2rem 0.5rem;" onclick="removerIngrediente(${i})">X</button>
+                </td>
+            </tr>
+        `;
+        });
+    }
+
+    // ==========================================
+    // CADASTRO PRODUTO (UNIFICADO)
+    // ==========================================
+    async function cadastrarProduto(e) {
+        e.preventDefault();
+        const nome = document.getElementById('prod-nome').value.trim();
+        const dias = parseInt(document.getElementById('prod-dias').value) || 30;
+        const idUnidade = parseInt(document.getElementById('prod-unidade').value);
+        const tipo = document.getElementById('prod-tipo').value;
+
+        const payload = {
+            nome: nome,
+            diasDuraveis: dias,
+            id_unidade: idUnidade
+        };
+
+        if (tipo === 'composto') {
+            if (ingredientes.length === 0) {
+                alert("⚠️ Adicione pelo menos um ingrediente para o produto composto.");
+                return;
+            }
+            let receita = {};
+            ingredientes.forEach(ing => {
+                receita[ing.id] = ing.qtd;
+            });
+            payload.receita = receita;
+        } else {
+            const isConjunto = document.getElementById('chk-conjunto').checked;
+            const fatorConjunto = parseFloat(document.getElementById('prod-fator-conjunto').value) || 1.0;
+            payload.is_conjunto = isConjunto;
+            payload.fator_conjunto = fatorConjunto;
+        }
+
+        try {
+            const resp = await fetch('/api/cadastrar-produto/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const res = await resp.json();
+
+            if (res.sucesso) {
+                alert(`✅ Produto '${nome}' cadastrado com sucesso!`);
+                window.location.reload();
+            } else {
+                alert(`❌ Erro ao cadastrar produto: ${res.mensagem}`);
+            }
+        } catch (err) {
+            alert(`❌ Erro: ${err}`);
+        }
+    }
+
+    // ==========================================
+    // EDIÇÃO DE PRODUTO
+    // ==========================================
+    function abrirModalEdicao(id, nome, diasDuraveis) {
+        document.getElementById('edicao-id').value = id;
+        document.getElementById('edicao-id-display').innerText = id;
+        document.getElementById('edicao-nome').value = nome;
+        document.getElementById('edicao-dias').value = diasDuraveis || 30;
+        document.getElementById('modal-edicao').showModal();
+    }
+
+    function fecharModalEdicao() {
+        document.getElementById('modal-edicao').close();
+    }
+
+    async function salvarEdicaoProduto(e) {
+        e.preventDefault();
+        const id = parseInt(document.getElementById('edicao-id').value);
+        const nome = document.getElementById('edicao-nome').value.trim();
+        const dias = parseInt(document.getElementById('edicao-dias').value) || 30;
+
+        const payload = { id, nome, diasDuraveis: dias };
+
+        try {
+            const resp = await fetch('/api/editar-produto/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+            const res = await resp.json();
+            if (res.sucesso) {
+                alert('✅ Produto atualizado com sucesso!');
+                fecharModalEdicao();
+                window.location.reload();
+            } else {
+                alert('❌ Erro: ' + res.mensagem);
+            }
+        } catch (err) {
+            alert('❌ Erro: ' + err);
+        }
+    }
+
+    // ==========================================
+    // APAGAR PRODUTO
+    // ==========================================
+    async function apagarProduto(id, nome) {
+        if (!confirm(`⚠️ Tem certeza que deseja APAGAR o produto: ${nome}? \nEsta ação não poderá ser desfeita se o produto não possuir vínculos de estoque.`)) {
+            return;
+        }
+
+        try {
+            const resp = await fetch('/api/apagar-produto/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: id })
+            });
+            const res = await resp.json();
+            if (res.sucesso) {
+                alert('✅ Produto apagado com sucesso!');
+                window.location.reload();
+            } else {
+                alert('❌ Erro ao apagar: ' + res.mensagem);
+            }
+        } catch (err) {
+            alert('❌ Erro: ' + err);
+        }
+    }
 </script>
 {% endblock %}

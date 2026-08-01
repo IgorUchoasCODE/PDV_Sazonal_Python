@@ -233,29 +233,59 @@ class GerenciadorSazonal:
                 return False
 
             id_tipo_nota = nota.get("id_tipoNota")
-            if id_tipo_nota not in cls.TIPOS_NOTAS_PERMITIDOS:
-                print(f"[GerenciadorSazonal] Snapshot IGNORADO: A Nota ID {id_fluxo_nota} é do tipo {id_tipo_nota}. Snapshots sazonais são gravados SOMENTE para Notas de Venda (2) e Perda (4/5).")
+            if id_tipo_nota not in [1, 2, 4, 5]:
+                print(f"[GerenciadorSazonal] Snapshot IGNORADO: A Nota ID {id_fluxo_nota} é do tipo {id_tipo_nota}. Snapshots sazonais são gravados SOMENTE para Notas de Compra(1), Venda (2) e Perda (4/5).")
                 return False
 
             # Obtém os indicativos (com cache mensal se for data passada)
             data_nota = nota.get("data_vencimento") or str(date.today())
             ind = cls.obter_indicadores_por_data(data_nota, cidade, rio)
 
+            # Busca eventos do mês e encontra o mais próximo
+            from br.com.pdv.src.apis.eventos.eventos_api import EventosAPI
+            dt_nota = datetime.strptime(str(data_nota), "%Y-%m-%d").date()
+            api_ev = EventosAPI(cidade=cidade)
+            eventos_mes = api_ev.obter_eventos_do_mes(dt_nota.year, dt_nota.month)
+            
+            evento_mais_proximo = None
+            menor_distancia = 9999
+            
+            for ev in eventos_mes:
+                if not ev.data_inicio:
+                    continue
+                try:
+                    dt_ev = datetime.strptime(ev.data_inicio, "%Y-%m-%d").date()
+                    dist = abs((dt_ev - dt_nota).days)
+                    # Filtra eventos que ocorreram num raio de 3 dias
+                    if dist <= 3 and dist < menor_distancia:
+                        menor_distancia = dist
+                        evento_mais_proximo = ev
+                except ValueError:
+                    continue
+                    
+            evento_tipo = "NENHUM"
+            evento_nome = None
+            if evento_mais_proximo:
+                evento_tipo = evento_mais_proximo.tipo.upper()
+                evento_nome = evento_mais_proximo.nome
+
             # Insere no banco via DB.INSERT.SNAPSHOT_SAZONAL
             DB.INSERT.SNAPSHOT_SAZONAL.executar(
                 id_fluxo_nota,
                 str(data_nota),
-                ind["temperatura_atual"],
-                ind["temperatura_min_semana"],
-                ind["temperatura_max_semana"],
-                ind["precipitacao_mm"],
-                ind["precipitacao_previsao_semana"],
-                ind["indicador_clima"],            # 'QUENTE', 'FRIO' ou 'AMENO'
-                ind["nivel_rio_atual"],
-                ind["nivel_rio_previsao_semana"],
-                ind["indicador_rio"],              # 'SECA', 'NORMAL' ou 'CHEIA'
-                ind["indicador_chuva"],            # 'SECO', 'MODERADO' ou 'CHUVOSO'
-                ind["quantidade_eventos_proximos"]
+                ind.get("temperatura_atual", 0.0),
+                ind.get("temperatura_min_semana", 0.0),
+                ind.get("temperatura_max_semana", 0.0),
+                ind.get("precipitacao_mm", 0.0),
+                ind.get("precipitacao_previsao_semana", 0.0),
+                ind.get("indicador_clima", "AMENO"),
+                ind.get("nivel_rio_atual", 0.0),
+                ind.get("nivel_rio_previsao_semana", 0.0),
+                ind.get("indicador_rio", "NORMAL"),
+                ind.get("indicador_chuva", "SECO"),
+                ind.get("quantidade_eventos_proximos", 0) if evento_tipo == "NENHUM" else 1,
+                evento_tipo,
+                evento_nome
             )
 
             print(f"[GerenciadorSazonal] Snapshot Sazonal salvo com SUCESSO para Nota ID {id_fluxo_nota} (Tipo: {id_tipo_nota}, Data: {data_nota})")

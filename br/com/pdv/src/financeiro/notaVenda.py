@@ -54,9 +54,13 @@ class NotaVenda(ComportamentoNota):
         self.__valorTotalVenda = 0
         self.__custoTotal = 0
         self.__lucroTotal = 0
+        
+        self.__desconto = 0
+        self.__acrescimo = 0
 
         # Flag de salvamento
         self.__salvo = False
+
 
     def adicionarProduto(self, produto: Produto, id_nota_origem: Union[int, dict] = None) -> bool:
         """
@@ -112,6 +116,11 @@ class NotaVenda(ComportamentoNota):
     def getProdutos(self) -> tuple[Produto]:
         return tuple(self.__produtos.values())
 
+    def setDescontoAcrescimo(self, desconto: float, acrescimo: float) -> None:
+        self.__desconto = max(0, float(desconto))
+        self.__acrescimo = max(0, float(acrescimo))
+        self.__salvo = False
+
     def getDados(self) -> dict:
         return {
             "id": self.__I,
@@ -123,6 +132,8 @@ class NotaVenda(ComportamentoNota):
             "valorTotalVenda": MoedaReal.parseMilharParaReais(self.__valorTotalVenda),
             "custoTotal": MoedaReal.parseMilharParaReais(self.__custoTotal),
             "lucroTotal": MoedaReal.parseMilharParaReais(self.__lucroTotal),
+            "desconto": MoedaReal.parseMilharParaReais(self.__desconto),
+            "acrescimo": MoedaReal.parseMilharParaReais(self.__acrescimo),
             "salvo": self.__salvo
         }
 
@@ -137,6 +148,14 @@ class NotaVenda(ComportamentoNota):
             self.__valorTotalVenda += dados.get("valorTotalVendas", 0) or 0
             self.__custoTotal += dados.get("ValorTotal", 0) or 0
             self.__lucroTotal += dados.get("valorTotalLucro", 0) or 0
+
+        # Aplica o acréscimo e desconto globais na nota
+        self.__valorTotalVenda += (self.__acrescimo - self.__desconto)
+        self.__lucroTotal += (self.__acrescimo - self.__desconto)
+
+        # Evita totais negativos (ou lucro irreal se desconto > lucro bruto)
+        if self.__valorTotalVenda < 0:
+            self.__valorTotalVenda = 0
 
         return True
 

@@ -60,7 +60,7 @@ class INSERT(QueryBase):
     ENTIDADE = "INSERT INTO entidades (id_pessoa, id_empresa, fornecedor, cliente, funcionario) VALUES (?, ?, ?, ?, ?)"
     ENTIDADE_CARGO = "INSERT INTO entidades_cargos (id_entidade, id_cargo) VALUES (?, ?)"
     REGISTRO = "INSERT INTO registro (id_tipos_registros, id_entidade, registro) VALUES (?, ?, ?)"
-    FLUXO_NOTA_ESTOQUE = "INSERT INTO fluxosNotasEstoque (id_tipoNota, id_representante, data_vencimento) VALUES (?, ?, ?)"
+    FLUXO_NOTA_ESTOQUE = "INSERT INTO fluxosNotasEstoque (id_tipoNota, id_representante, data_vencimento, desconto, acrescimo) VALUES (?, ?, ?, ?, ?)"
     FLUXO_PAGAMENTO_NOTA = "INSERT INTO fluxoPagamentoNotas (id_fluxo_nota, id_forma_pagamento, valor, data_pagamento) VALUES (?, ?, ?, ?)"
     FLUXO_ESTOQUE = "INSERT INTO fluxoEstoque (id_notaOrigem, id_fluxo_nota, id_tipoNota, id_produto, quantidade, valorUnidario, lucroTotal, data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
     TAXA_PAGAMENTO = "INSERT INTO taxasPagamento (id_formaPagamento, descricao, taxa) VALUES (?, ?, ?)"
@@ -68,8 +68,8 @@ class INSERT(QueryBase):
         (id_fluxo_nota, data_registro, temperatura_atual, temperatura_min_semana, temperatura_max_semana,
          precipitacao_mm, precipitacao_previsao_semana, indicador_clima,
          nivel_rio_atual, nivel_rio_previsao_semana, indicador_rio,
-         indicador_chuva, qtd_eventos_proximos)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
+         indicador_chuva, qtd_eventos_proximos, evento_tipo, evento_nome)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"""
 
 
 class SELECT(QueryBase):

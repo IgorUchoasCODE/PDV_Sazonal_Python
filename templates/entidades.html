@@ -1,110 +1,216 @@
 {% extends "base.html" %}
 
-{% block title %}Entidades & Cargos — PDV Sazonal{% endblock %}
-{% block page_title %}Cadastro de Pessoas, Empresas e Cargos (3 Entidades){% endblock %}
+{% block title %}Entidades & Cadastros — Sazonalizei{% endblock %}
+{% block page_title %}Cadastros (Pessoas, Empresas e Vínculos){% endblock %}
 
 {% block content %}
-<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
-    <!-- Formulário Unificado de Cadastro -->
-    <div class="metric-card">
-        <h3 style="margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
-            👤 Novo Cadastro de Entidade / Vínculo
-        </h3>
+<div style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 1400px; margin: 0 auto;">
+
+    <!-- PAINEL SUPERIOR: Formulário -->
+    <div class="metric-card" style="border-top: 5px solid var(--brand-blue); padding: 1.5rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 2px dashed var(--border-color); padding-bottom: 1rem;">
+            <div>
+                <h2 style="font-size: 1.5rem; color: var(--brand-blue-dark); font-weight: 800; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-size: 1.8rem;">👤</span> Novo Cadastro de Entidade
+                </h2>
+                <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.25rem;">
+                    Preencha o formulário abaixo para registrar Pessoas Físicas, Empresas (Jurídicas) ou Vínculos de Cargo.
+                </p>
+            </div>
+            <div>
+                <button onclick="document.getElementById('form-entidade').reset(); alternarCampos();" class="btn btn-secondary" style="border-radius: 8px;">
+                    🔄 Limpar Formulário
+                </button>
+            </div>
+        </div>
 
         <form id="form-entidade" onsubmit="salvarEntidade(event)">
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">Tipo de Cadastro:</label>
-                <select id="ent-tipo" class="form-control" onchange="alternarCampos()" required>
-                    <option value="PESSOA">Pessoa Física (Pessoa Pura)</option>
-                    <option value="EMPRESA">Pessoa Jurídica (Empresa Pura)</option>
-                    <option value="VINCULO">Vínculo Pessoa + Empresa (Com Cargo)</option>
-                </select>
-            </div>
+            <!-- Seção Principal do Form -->
+            <div style="display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; margin-bottom: 1.5rem;">
+                
+                <!-- Coluna Esquerda: Tipo e Papéis -->
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius-md); border: 1px solid #e2e8f0;">
+                        <label style="display: block; font-size: 0.95rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">Tipo de Cadastro</label>
+                        <select id="ent-tipo" class="form-control" style="font-size: 1rem; padding: 0.75rem; border-color: #cbd5e1;" onchange="alternarCampos()" required>
+                            <option value="PESSOA">🧑 Pessoa Física (Individual)</option>
+                            <option value="EMPRESA">🏢 Pessoa Jurídica (Empresa)</option>
+                            <option value="VINCULO" style="font-weight: bold;">🤝 Vínculo Pessoa + Empresa (Com Cargo)</option>
+                        </select>
+                    </div>
 
-            <!-- Campos Pessoa -->
-            <div id="campo-pessoa-nome" style="margin-bottom: 1rem;">
-                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">Nome da Pessoa:</label>
-                <input type="text" id="ent-nome-pessoa" class="input-field" placeholder="Ex: João da Silva">
-            </div>
+                    <div style="background: rgba(15, 23, 42, 0.03); padding: 1rem; border-radius: var(--radius-md); border: 1px solid #e2e8f0;">
+                        <label style="display: block; font-size: 0.95rem; font-weight: 700; color: #334155; margin-bottom: 0.75rem;">
+                            Papéis no Sistema (Opcional):
+                        </label>
+                        <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; color: #475569; cursor: pointer; padding: 0.5rem; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                <input type="checkbox" id="chk-cliente" style="width: 1.25rem; height: 1.25rem; accent-color: var(--brand-blue);"> 
+                                <span><span style="font-size: 1.1rem;">🛍️</span> Cliente (Pode comprar produtos)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; color: #475569; cursor: pointer; padding: 0.5rem; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                <input type="checkbox" id="chk-fornecedor" style="width: 1.25rem; height: 1.25rem; accent-color: var(--brand-blue);"> 
+                                <span><span style="font-size: 1.1rem;">📦</span> Fornecedor (Pode fornecer produtos)</span>
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.95rem; color: #475569; cursor: pointer; padding: 0.5rem; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+                                <input type="checkbox" id="chk-funcionario" style="width: 1.25rem; height: 1.25rem; accent-color: var(--brand-blue);"> 
+                                <span><span style="font-size: 1.1rem;">💼</span> Funcionário (Colaborador interno)</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
 
-            <!-- Campos Empresa -->
-            <div id="campo-empresa-nome" style="margin-bottom: 1rem; display: none;">
-                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">Razão Social / Nome da Empresa:</label>
-                <input type="text" id="ent-nome-empresa" class="input-field" placeholder="Ex: Distribuidora Alfa LTDA">
-            </div>
+                <!-- Coluna Direita: Dados -->
+                <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                    
+                    <div id="campo-pessoa-nome" style="background: white; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <label style="display: block; font-size: 0.95rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">Nome Completo (Pessoa)</label>
+                        <select id="id-pessoa-existente" class="form-control" style="font-size: 1.05rem; padding: 0.75rem; margin-bottom: 0.5rem; display: none;" onchange="if(this.value){ document.getElementById('ent-nome-pessoa').style.display='none'; } else { document.getElementById('ent-nome-pessoa').style.display='block'; }">
+                            <option value="">➕ Cadastrar Nova Pessoa...</option>
+                            {% for p in pessoas_puras %}
+                            <option value="{{ p.id_pessoa }}">{{ p.pessoa_nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="text" id="ent-nome-pessoa" class="input-field" style="font-size: 1.05rem; padding: 0.75rem;" placeholder="Ex: João da Silva">
+                    </div>
 
-            <!-- Campo Cargo (para Vínculo) -->
-            <div id="campo-cargo" style="margin-bottom: 1rem; display: none;">
-                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.35rem;">Cargo na Empresa:</label>
-                <select id="ent-cargo" class="form-control">
-                    {% for c in cargos %}
-                    <option value="{{ c.id }}">{{ c.descricao }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+                    <div id="campo-empresa-nome" style="display: none; background: white; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <label style="display: block; font-size: 0.95rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">Razão Social / Nome Fantasia (Empresa)</label>
+                        <select id="id-empresa-existente" class="form-control" style="font-size: 1.05rem; padding: 0.75rem; margin-bottom: 0.5rem; display: none;" onchange="if(this.value){ document.getElementById('ent-nome-empresa').style.display='none'; } else { document.getElementById('ent-nome-empresa').style.display='block'; }">
+                            <option value="">➕ Cadastrar Nova Empresa...</option>
+                            {% for e in empresas_puras %}
+                            <option value="{{ e.id_empresa }}">{{ e.empresa_nome }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="text" id="ent-nome-empresa" class="input-field" style="font-size: 1.05rem; padding: 0.75rem;" placeholder="Ex: Distribuidora Alfa LTDA">
+                    </div>
 
-            <!-- Opções Simultâneas -->
-            <div style="margin-bottom: 1.25rem; background: rgba(15, 23, 42, 0.5); padding: 0.85rem; border-radius: var(--radius-md); border: 1px solid var(--border-color);">
-                <label style="display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600;">
-                    Papéis da Entidade (Pode selecionar as 3 opções simultaneamente):
-                </label>
-                <div style="display: flex; gap: 1rem;">
-                    <label><input type="checkbox" id="chk-cliente"> Cliente</label>
-                    <label><input type="checkbox" id="chk-fornecedor"> Fornecedor</label>
-                    <label><input type="checkbox" id="chk-funcionario"> Funcionário</label>
+                    <div id="campo-cargo" style="display: none; background: white; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <label style="display: block; font-size: 0.95rem; font-weight: 700; color: #334155; margin-bottom: 0.5rem;">Cargo na Empresa (Vínculo)</label>
+                        <select id="ent-cargo" class="form-control" style="font-size: 1.05rem; padding: 0.75rem;">
+                            {% for c in cargos %}
+                            <option value="{{ c.id }}">{{ c.descricao }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div style="background: white; padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid #e2e8f0; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                        <label style="display: block; font-size: 0.95rem; font-weight: 700; color: #334155; margin-bottom: 0.75rem;">
+                            Informações de Contato (Opcional):
+                        </label>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Telefone/Celular (WhatsApp)</label>
+                                <input type="text" id="ent-telefone" class="input-field" style="padding: 0.75rem;" placeholder="(92) 99999-9999">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">E-mail (ou Chave PIX principal)</label>
+                                <input type="text" id="ent-email" class="input-field" style="padding: 0.75rem;" placeholder="contato@empresa.com.br">
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
-            <button type="submit" class="btn btn-primary" style="width: 100%;">
-                💾 Salvar Entidade
-            </button>
+            <!-- Botão Salvar -->
+            <div style="text-align: right; border-top: 1px solid #e2e8f0; padding-top: 1.5rem;">
+                <button type="submit" class="btn btn-primary" style="font-size: 1.1rem; font-weight: 800; padding: 0.75rem 2rem; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.3);">
+                    💾 Salvar Entidade / Vínculo
+                </button>
+            </div>
         </form>
     </div>
 
-    <!-- Tabela de Entidades Cadastradas -->
-    <div class="metric-card">
-        <h3 style="margin-bottom: 1rem;">👥 Entidades Registradas no Sistema</h3>
+    <!-- PAINEL INFERIOR: Tabela -->
+    <div class="metric-card" style="padding: 1.5rem; border-top: 5px solid #10b981;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 style="font-size: 1.3rem; color: #334155; font-weight: 800; margin: 0;">
+                👥 Entidades Registradas no Sistema
+            </h3>
+            <div>
+                <input type="text" id="search-ent" placeholder="🔍 Buscar entidade..." class="input-field" style="width: 250px; border-radius: 8px; padding: 0.5rem 0.75rem;" oninput="filtrarLista()">
+            </div>
+        </div>
 
-        <div class="table-container" style="max-height: 480px; overflow-y: auto;">
-            <table class="table-custom">
-                <thead>
+        <div class="table-container" style="max-height: 500px; overflow-y: auto; border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <table class="table-custom" id="tabela-ent">
+                <thead style="position: sticky; top: 0; background: #f8fafc; z-index: 1;">
                     <tr>
-                        <th>ID</th>
-                        <th>Tipo</th>
-                        <th>Nome / Vínculo</th>
-                        <th>Papéis</th>
-                        <th>Cargo</th>
+                        <th style="padding: 1rem;">ID</th>
+                        <th style="padding: 1rem;">Tipo</th>
+                        <th style="padding: 1rem;">Nome / Razão Social</th>
+                        <th style="padding: 1rem;">Papéis (Funções)</th>
+                        <th style="padding: 1rem;">Cargo / Posição</th>
+                        <th style="padding: 1rem; text-align: center;">Ações</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody style="background: white;">
                     {% for e in entidades %}
-                    <tr>
-                        <td>#{{ e.id_entidade }}</td>
-                        <td>
-                            <span class="badge {% if e.tipo_entidade == 'PESSOA_PURA' %}badge-blue{% elif e.tipo_entidade == 'EMPRESA_PURA' %}badge-emerald{% else %}badge-purple{% endif %}">
-                                {{ e.tipo_entidade }}
-                            </span>
-                        </td>
-                        <td>
-                            <strong>{{ e.pessoa_nome|default:e.empresa_nome }}</strong>
-                            {% if e.pessoa_nome and e.empresa_nome %}
-                            <div style="font-size: 0.75rem; color: #94a3b8;">Empresa: {{ e.empresa_nome }}</div>
+                    <tr class="ent-row" style="transition: background 0.2s; border-bottom: 1px solid #e2e8f0;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='white'">
+                        <td style="padding: 1rem; font-weight: 700; color: #94a3b8;">#{{ e.id_entidade }}</td>
+                        <td style="padding: 1rem;">
+                            {% if e.tipo_entidade == 'PESSOA_PURA' %}
+                                <span class="badge badge-blue" style="font-size: 0.75rem;">👤 PESSOA</span>
+                            {% elif e.tipo_entidade == 'EMPRESA_PURA' %}
+                                <span class="badge badge-emerald" style="font-size: 0.75rem;">🏢 EMPRESA</span>
+                            {% else %}
+                                <span class="badge badge-purple" style="font-size: 0.75rem;">🤝 VÍNCULO</span>
                             {% endif %}
                         </td>
-                        <td>
-                            <small>
-                                {% if e.is_cliente %}Client {% endif %}
-                                {% if e.is_fornecedor %}Forn {% endif %}
-                                {% if e.is_funcionario %}Func{% endif %}
-                            </small>
+                        <td style="padding: 1rem;">
+                            <strong style="color: var(--brand-blue-dark); font-size: 1.05rem;">{{ e.pessoa_nome|default:e.empresa_nome }}</strong>
+                            {% if e.pessoa_nome and e.empresa_nome %}
+                            <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">
+                                🏢 Vinculado à empresa: <strong>{{ e.empresa_nome }}</strong>
+                            </div>
+                            {% endif %}
+                            
+                            {% if e.contatos %}
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.35rem; flex-wrap: wrap;">
+                                {% for c in e.contatos %}
+                                    {% if c.tipo == 'TELEFONE' or c.tipo == 'Telefone' %}
+                                    <span style="font-size: 0.75rem; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #475569;">📞 {{ c.valor }}</span>
+                                    {% elif c.tipo == 'EMAIL' or c.tipo == 'E-mail' %}
+                                    <span style="font-size: 0.75rem; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #475569;">✉️ {{ c.valor }}</span>
+                                    {% else %}
+                                    <span style="font-size: 0.75rem; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; color: #475569;">{{ c.valor }}</span>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            {% endif %}
                         </td>
-                        <td>
+                        <td style="padding: 1rem;">
+                            <div style="display: flex; gap: 0.25rem; flex-wrap: wrap;">
+                                {% if e.is_cliente %}
+                                <span style="font-size: 0.7rem; background: #e0e7ff; color: #4f46e5; padding: 2px 6px; border-radius: 12px; font-weight: 700;">CLIENTE</span>
+                                {% endif %}
+                                {% if e.is_fornecedor %}
+                                <span style="font-size: 0.7rem; background: #ffedd5; color: #ea580c; padding: 2px 6px; border-radius: 12px; font-weight: 700;">FORNECEDOR</span>
+                                {% endif %}
+                                {% if e.is_funcionario %}
+                                <span style="font-size: 0.7rem; background: #f3f4f6; color: #4b5563; padding: 2px 6px; border-radius: 12px; font-weight: 700;">FUNCIONÁRIO</span>
+                                {% endif %}
+                                {% if not e.is_cliente and not e.is_fornecedor and not e.is_funcionario %}
+                                <span style="font-size: 0.75rem; color: #94a3b8;">Nenhum papel</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="padding: 1rem;">
                             {% for c in e.cargos %}
-                            <span class="badge badge-purple">{{ c.descricao }}</span>
+                            <span class="badge" style="background: var(--brand-blue); color: white; font-size: 0.75rem;">{{ c.descricao }}</span>
                             {% empty %}
-                            <span style="color: #64748b;">-</span>
+                            <span style="color: #cbd5e1; font-style: italic;">Não especificado</span>
                             {% endfor %}
                         </td>
+                        <td style="padding: 1rem; text-align: center;">
+                            <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px; margin-right: 0.25rem;" onclick="abrirModalEdicao({{ e.id_entidade }}, '{{ e.tipo_entidade }}', '{{ e.pessoa_nome|default:e.empresa_nome|escapejs }}', {{ e.is_cliente|yesno:'true,false' }}, {{ e.is_fornecedor|yesno:'true,false' }}, {{ e.is_funcionario|yesno:'true,false' }})">✏️ Editar</button>
+                            <button class="btn btn-secondary" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; border-radius: 4px; color: #ef4444; border-color: #ef4444;" onclick="apagarEntidade({{ e.id_entidade }}, '{{ e.pessoa_nome|default:e.empresa_nome|escapejs }}')">🗑️ Apagar</button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: #94a3b8;">Nenhuma entidade cadastrada.</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -112,6 +218,54 @@
         </div>
     </div>
 </div>
+
+<!-- MODAL DE EDIÇÃO -->
+<div id="modal-edicao" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 50; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; width: 500px; max-width: 90%; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+            <h3 style="margin: 0; color: var(--brand-blue-dark); font-size: 1.4rem;">✏️ Editar Entidade</h3>
+            <button onclick="fecharModalEdicao()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer;">&times;</button>
+        </div>
+        <form id="form-edicao" onsubmit="salvarEdicao(event)">
+            <input type="hidden" id="edit-id">
+            
+            <div style="margin-bottom: 1rem;">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.25rem;">Nome / Razão Social</label>
+                <input type="text" id="edit-nome" class="input-field" style="width: 100%; padding: 0.5rem;" required>
+            </div>
+            
+            <div style="margin-bottom: 1rem; display: flex; gap: 1rem;">
+                <label><input type="checkbox" id="edit-cliente"> Cliente</label>
+                <label><input type="checkbox" id="edit-fornecedor"> Fornecedor</label>
+                <label><input type="checkbox" id="edit-funcionario"> Funcionário</label>
+            </div>
+            
+            <div style="margin-bottom: 1rem;" id="edit-cargo-container">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.25rem;">Cargo (Opcional)</label>
+                <select id="edit-cargo" class="form-control" style="width: 100%; padding: 0.5rem;">
+                    <option value="">(Sem Alteração)</option>
+                    {% for c in cargos %}
+                    <option value="{{ c.id }}">{{ c.descricao }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <label style="display: block; font-weight: 700; margin-bottom: 0.25rem;">Telefone (Opcional)</label>
+                <input type="text" id="edit-telefone" class="input-field" style="width: 100%; padding: 0.5rem;">
+                
+                <label style="display: block; font-weight: 700; margin-top: 0.5rem; margin-bottom: 0.25rem;">Email (Opcional)</label>
+                <input type="email" id="edit-email" class="input-field" style="width: 100%; padding: 0.5rem;">
+            </div>
+            
+            <div style="text-align: right;">
+                <button type="button" class="btn btn-secondary" onclick="fecharModalEdicao()">Cancelar</button>
+                <button type="submit" class="btn btn-primary" style="margin-left: 0.5rem;">💾 Salvar Alterações</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -121,44 +275,87 @@ function alternarCampos() {
     const fPessoa = document.getElementById('campo-pessoa-nome');
     const fEmpresa = document.getElementById('campo-empresa-nome');
     const fCargo = document.getElementById('campo-cargo');
+    const selPessoa = document.getElementById('id-pessoa-existente');
+    const selEmpresa = document.getElementById('id-empresa-existente');
+    const inpPessoa = document.getElementById('ent-nome-pessoa');
+    const inpEmpresa = document.getElementById('ent-nome-empresa');
 
     if (tipo === 'PESSOA') {
         fPessoa.style.display = 'block';
         fEmpresa.style.display = 'none';
         fCargo.style.display = 'none';
+        if(selPessoa) selPessoa.style.display = 'none';
+        if(inpPessoa) inpPessoa.style.display = 'block';
     } else if (tipo === 'EMPRESA') {
         fPessoa.style.display = 'none';
         fEmpresa.style.display = 'block';
         fCargo.style.display = 'none';
+        if(selEmpresa) selEmpresa.style.display = 'none';
+        if(inpEmpresa) inpEmpresa.style.display = 'block';
     } else if (tipo === 'VINCULO') {
         fPessoa.style.display = 'block';
         fEmpresa.style.display = 'block';
         fCargo.style.display = 'block';
+        if(selPessoa) {
+            selPessoa.style.display = 'block';
+            selPessoa.value = "";
+        }
+        if(inpPessoa) inpPessoa.style.display = 'block';
+        if(selEmpresa) {
+            selEmpresa.style.display = 'block';
+            selEmpresa.value = "";
+        }
+        if(inpEmpresa) inpEmpresa.style.display = 'block';
     }
 }
 
 async function salvarEntidade(e) {
     e.preventDefault();
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '⏳ Salvando...';
+    submitBtn.disabled = true;
 
     const tipo = document.getElementById('ent-tipo').value;
     const nomePessoa = document.getElementById('ent-nome-pessoa').value.trim();
     const nomeEmpresa = document.getElementById('ent-nome-empresa').value.trim();
+    const selPessoa = document.getElementById('id-pessoa-existente');
+    const selEmpresa = document.getElementById('id-empresa-existente');
+    const idPessoaExistente = selPessoa && selPessoa.value ? parseInt(selPessoa.value) : null;
+    const idEmpresaExistente = selEmpresa && selEmpresa.value ? parseInt(selEmpresa.value) : null;
     const cargoId = parseInt(document.getElementById('ent-cargo').value);
+    
+    const telefone = document.getElementById('ent-telefone').value.trim();
+    const email = document.getElementById('ent-email').value.trim();
+
+    const contatos = {};
+    if (telefone) contatos["TELEFONE"] = telefone;
+    if (email) contatos["EMAIL"] = email;
 
     const payload = {
         tipo: tipo,
         is_cliente: document.getElementById('chk-cliente').checked,
         is_fornecedor: document.getElementById('chk-fornecedor').checked,
-        is_funcionario: document.getElementById('chk-funcionario').checked
+        is_funcionario: document.getElementById('chk-funcionario').checked,
+        contatos: contatos
     };
 
     if (tipo === 'PESSOA') {
+        if (!nomePessoa) { alert("Nome da pessoa é obrigatório."); submitBtn.innerHTML = originalText; submitBtn.disabled = false; return; }
         payload.nome = nomePessoa;
     } else if (tipo === 'EMPRESA') {
+        if (!nomeEmpresa) { alert("Razão Social da empresa é obrigatória."); submitBtn.innerHTML = originalText; submitBtn.disabled = false; return; }
         payload.nome = nomeEmpresa;
     } else if (tipo === 'VINCULO') {
-        payload.pessoa = { nome: nomePessoa };
-        payload.empresa = { nome: nomeEmpresa };
+        if (!idPessoaExistente && !nomePessoa) { alert("Nome da pessoa é obrigatório para um Vínculo."); submitBtn.innerHTML = originalText; submitBtn.disabled = false; return; }
+        if (!idEmpresaExistente && !nomeEmpresa) { alert("Nome da empresa é obrigatório para um Vínculo."); submitBtn.innerHTML = originalText; submitBtn.disabled = false; return; }
+        
+        if (idPessoaExistente) payload.id_pessoa_existente = idPessoaExistente;
+        else payload.pessoa = { nome: nomePessoa, contatos: contatos };
+        
+        if (idEmpresaExistente) payload.id_empresa_existente = idEmpresaExistente;
+        else payload.empresa = { nome: nomeEmpresa, contatos: contatos };
+        
         payload.cargo = cargoId;
     }
 
@@ -168,16 +365,118 @@ async function salvarEntidade(e) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+        
+        // Verifica se a resposta não é OK (como o erro 500)
+        if (!resp.ok) {
+            throw new Error(`Erro de rede: ${resp.status} ${resp.statusText}`);
+        }
+        
         const res = await resp.json();
 
         if (res.sucesso) {
-            alert(`✅ ${res.mensagem}`);
             window.location.reload();
         } else {
             alert(`❌ Erro: ${res.mensagem}`);
         }
     } catch (err) {
-        alert(`❌ Erro ao salvar: ${err}`);
+        alert(`❌ Erro ao salvar: Ocorreu um problema no servidor.\nDetalhes: ${err.message}`);
+    } finally {
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+function filtrarLista() {
+    const termo = document.getElementById('search-ent').value.toLowerCase();
+    document.querySelectorAll('#tabela-ent .ent-row').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(termo) ? '' : 'none';
+    });
+}
+
+async function apagarEntidade(id_entidade, nome) {
+    if(!confirm(`Tem certeza que deseja APAGAR a entidade "${nome}"?\n\nISSO É IRREVERSÍVEL! Vínculos dessa entidade também serão apagados.`)) return;
+    
+    try {
+        const resp = await fetch('/api/apagar-entidade/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: id_entidade })
+        });
+        
+        const res = await resp.json();
+        if (res.sucesso) {
+            window.location.reload();
+        } else {
+            alert(`❌ Não foi possível apagar:\n${res.mensagem}`);
+        }
+    } catch (err) {
+        alert(`❌ Erro no servidor:\n${err.message}`);
+    }
+}
+
+function abrirModalEdicao(id_entidade, tipo, nome, is_cli, is_forn, is_func) {
+    document.getElementById('edit-id').value = id_entidade;
+    document.getElementById('edit-nome').value = nome;
+    document.getElementById('edit-cliente').checked = is_cli;
+    document.getElementById('edit-fornecedor').checked = is_forn;
+    document.getElementById('edit-funcionario').checked = is_func;
+    
+    // Se for vínculo não editamos o nome, ele compõe de 2, mas deixamos liberado pra simplificar
+    // E o cargo a gente exibe se for VINCULO, se não, esconde.
+    if(tipo === 'VINCULO_PESSOA_EMPRESA') {
+        document.getElementById('edit-nome').disabled = true; // melhor não alterar o nome do vinculo diretamente aqui
+        document.getElementById('edit-cargo-container').style.display = 'block';
+    } else {
+        document.getElementById('edit-nome').disabled = false;
+        document.getElementById('edit-cargo-container').style.display = 'none';
+    }
+    
+    document.getElementById('modal-edicao').style.display = 'flex';
+}
+
+function fecharModalEdicao() {
+    document.getElementById('modal-edicao').style.display = 'none';
+    document.getElementById('form-edicao').reset();
+}
+
+async function salvarEdicao(e) {
+    e.preventDefault();
+    const btn = e.target.querySelector('button[type="submit"]');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = '⏳ Salvando...';
+    btn.disabled = true;
+    
+    const payload = {
+        id_entidade: parseInt(document.getElementById('edit-id').value),
+        nome: document.getElementById('edit-nome').value.trim(),
+        is_cliente: document.getElementById('edit-cliente').checked,
+        is_fornecedor: document.getElementById('edit-fornecedor').checked,
+        is_funcionario: document.getElementById('edit-funcionario').checked,
+        cargo: document.getElementById('edit-cargo').value ? parseInt(document.getElementById('edit-cargo').value) : null,
+        contatos: {
+            "TELEFONE": document.getElementById('edit-telefone').value.trim(),
+            "EMAIL": document.getElementById('edit-email').value.trim()
+        }
+    };
+    
+    try {
+        const resp = await fetch('/api/editar-entidade/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        const res = await resp.json();
+        if (res.sucesso) {
+            window.location.reload();
+        } else {
+            alert(`❌ Erro: ${res.mensagem}`);
+        }
+    } catch (err) {
+        alert(`❌ Erro no servidor:\n${err.message}`);
+    } finally {
+        btn.innerHTML = oldText;
+        btn.disabled = false;
     }
 }
 </script>

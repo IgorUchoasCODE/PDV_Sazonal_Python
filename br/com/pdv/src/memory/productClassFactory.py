@@ -201,7 +201,7 @@ class productClassFactory:
                 dados["nome"],
                 dados["diasDuraveis"],
                 id_um,
-                str(receita) if receita else None,
+                True if receita else False,
                 0, 0, 0  # varejo, atacado, promocao (preços de venda — definidos posteriormente)
             )
 

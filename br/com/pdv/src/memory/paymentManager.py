@@ -52,6 +52,10 @@ class ExtratoFinanceiro:
         self.contas_a_receber = round(max(0.0, self.total_vendas - self.pagamentos_recebidos), 2)
         self.contas_a_pagar = round(max(0.0, self.total_compras - self.pagamentos_efetuados), 2)
         self.saldo_liquido_caixa = round(self.pagamentos_recebidos - self.pagamentos_efetuados, 2)
+        
+        # Adiantamentos: Pagamentos além das dívidas
+        self.adiantamento_cliente = round(max(0.0, self.pagamentos_recebidos - self.total_vendas), 2)
+        self.adiantamento_fornecedor = round(max(0.0, self.pagamentos_efetuados - self.total_compras), 2)
 
     def to_dict(self) -> Dict[str, Any]:
         """Exporta os dados formatados em dicionário para consumo por interfaces ou APIs."""
@@ -71,9 +75,11 @@ class ExtratoFinanceiro:
                 "contas_a_receber": self.contas_a_receber,
                 "contas_a_pagar": self.contas_a_pagar,
                 "saldo_liquido_caixa": self.saldo_liquido_caixa,
+                "adiantamento_cliente": getattr(self, 'adiantamento_cliente', 0.0),
+                "adiantamento_fornecedor": getattr(self, 'adiantamento_fornecedor', 0.0),
             },
-            "historico_notas": self.historico_notas,
-            "historico_pagamentos": self.historico_pagamentos
+            "historico_notas": sorted(self.historico_notas, key=lambda x: x["id_fluxo_nota"], reverse=True),
+            "historico_pagamentos": sorted(self.historico_pagamentos, key=lambda x: x["id_pagamento"], reverse=True)
         }
 
 
@@ -194,7 +200,7 @@ class PaymentManager:
             if not nome:
                 return {"sucesso": False, "mensagem": "O campo 'nome' é obrigatório."}
 
-            sexo_input = dados.get("sexo", "OUTRO")
+            sexo_input = dados.get("sexo", "OUTROS")
             sexo_enum = None
             if isinstance(sexo_input, int):
                 for g in Sexo:
@@ -207,7 +213,7 @@ class PaymentManager:
                         sexo_enum = g
                         break
             if not sexo_enum:
-                sexo_enum = Sexo.OUTRO
+                sexo_enum = Sexo.OUTROS
 
             pessoa_obj = Pessoa(0, nome, sexo_enum)
             contatos = dados.get("contatos", {})
@@ -536,6 +542,18 @@ class PaymentManager:
                         tipo_nome = f"Tipo {id_tipo}"
                     registros_list.append({"tipo": tipo_nome, "valor": reg_val})
 
+            try:
+                extrato = cls.get_extrato_entidade(id_ent)
+                saldo_devedor = extrato.get("resumo", {}).get("contas_a_receber", 0.0)
+                saldo_fornecedor = extrato.get("resumo", {}).get("contas_a_pagar", 0.0)
+                adiantamento_c = extrato.get("resumo", {}).get("adiantamento_cliente", 0.0)
+                adiantamento_f = extrato.get("resumo", {}).get("adiantamento_fornecedor", 0.0)
+            except Exception:
+                saldo_devedor = 0.0
+                saldo_fornecedor = 0.0
+                adiantamento_c = 0.0
+                adiantamento_f = 0.0
+
             resultado.append({
                 "id_entidade": id_ent,
                 "tipo_entidade": tipo_entidade,
@@ -547,7 +565,11 @@ class PaymentManager:
                 "is_fornecedor": bool(ent.get("fornecedor")),
                 "is_funcionario": bool(ent.get("funcionario")),
                 "cargos": cargos_list,
-                "contatos": registros_list
+                "contatos": registros_list,
+                "saldo_devedor_cliente": saldo_devedor,
+                "saldo_devedor_fornecedor": saldo_fornecedor,
+                "adiantamento_cliente": adiantamento_c,
+                "adiantamento_fornecedor": adiantamento_f
             })
 
         return resultado
@@ -556,13 +578,179 @@ class PaymentManager:
     def cadastrar_entidade_completa(cls, dados: Dict[str, Any]) -> Dict[str, Any]:
         """
         Método unificado que recebe uma requisição completa via dicionário
-        e decide se cria Pessoa ou Empresa e seus respectivos papéis.
+        e decide se cria Pessoa, Empresa ou um Vínculo completo.
         """
         tipo = dados.get("tipo", "PESSOA").upper()
         if tipo == "EMPRESA":
             return cls.cadastrar_empresa(dados)
-        else:
+        elif tipo == "PESSOA":
             return cls.cadastrar_pessoa(dados)
+        elif tipo == "VINCULO":
+            return cls.cadastrar_vinculo_completo(dados)
+        else:
+            return {"sucesso": False, "mensagem": f"Tipo de cadastro '{tipo}' inválido."}
+
+    @classmethod
+    def cadastrar_vinculo_completo(cls, dados: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Cria uma Pessoa e uma Empresa simultaneamente (se não informadas)
+        e já estabelece o Vínculo entre elas.
+        """
+        id_pessoa = dados.get("id_pessoa_existente")
+        if not id_pessoa:
+            pessoa_dados = dados.get("pessoa", {})
+            pessoa_dados["is_cliente"] = False
+            pessoa_dados["is_fornecedor"] = False
+            pessoa_dados["is_funcionario"] = False
+            res_p = cls.cadastrar_pessoa(pessoa_dados)
+            if not res_p.get("sucesso"):
+                return res_p
+            id_pessoa = res_p.get("id_pessoa")
+
+        id_empresa = dados.get("id_empresa_existente")
+        if not id_empresa:
+            empresa_dados = dados.get("empresa", {})
+            empresa_dados["is_cliente"] = False
+            empresa_dados["is_fornecedor"] = False
+            empresa_dados["is_funcionario"] = False
+            res_e = cls.cadastrar_empresa(empresa_dados)
+            if not res_e.get("sucesso"):
+                return res_e
+            id_empresa = res_e.get("id_empresa")
+
+        res_vinc = cls.vincular_pessoa_empresa({
+            "id_pessoa": id_pessoa,
+            "id_empresa": id_empresa,
+            "cargo": dados.get("cargo", 21),
+            "is_cliente": dados.get("is_cliente", False),
+            "is_fornecedor": dados.get("is_fornecedor", False),
+            "is_funcionario": dados.get("is_funcionario", False)
+        })
+        
+        return res_vinc
+
+    @classmethod
+    def apagar_entidade(cls, id_entidade: int) -> Dict[str, Any]:
+        """
+        Apaga uma entidade e todos os seus ramificados.
+        Bloqueia a exclusão se houver alguma nota vinculada a ela ou aos seus ramificados.
+        """
+        try:
+            from br.com.pdv.src.BDD.bancodb import BancoDB
+            banco = BancoDB()
+            with banco.obter_conexao() as conn:
+                cursor = conn.cursor()
+                
+                # 1. Buscar a entidade base
+                cursor.execute("SELECT id_pessoa, id_empresa FROM entidades WHERE id = ?", (id_entidade,))
+                row = cursor.fetchone()
+                if not row:
+                    return {"sucesso": False, "mensagem": "Entidade não encontrada."}
+                
+                id_pessoa = row[0]
+                id_empresa = row[1]
+                
+                # 2. Descobrir todos os IDs de entidades afetados (ramificações)
+                ids_afetados = set()
+                ids_afetados.add(id_entidade)
+                
+                if id_pessoa is not None and id_empresa is None:
+                    # É pessoa pura, afeta qualquer vínculo com esse id_pessoa
+                    cursor.execute("SELECT id FROM entidades WHERE id_pessoa = ?", (id_pessoa,))
+                    for r in cursor.fetchall(): ids_afetados.add(r[0])
+                elif id_empresa is not None and id_pessoa is None:
+                    # É empresa pura, afeta qualquer vínculo com esse id_empresa
+                    cursor.execute("SELECT id FROM entidades WHERE id_empresa = ?", (id_empresa,))
+                    for r in cursor.fetchall(): ids_afetados.add(r[0])
+                    
+                # 3. Verificar notas financeiras vinculadas a qualquer um dos ids afetados
+                placeholders = ",".join(["?"] * len(ids_afetados))
+                cursor.execute(f"SELECT id FROM fluxosNotasEstoque WHERE id_representante IN ({placeholders}) LIMIT 1", tuple(ids_afetados))
+                if cursor.fetchone():
+                    return {"sucesso": False, "mensagem": "Exclusão bloqueada: Esta entidade (ou seus vínculos) possui histórico de notas cadastrado."}
+                
+                # 4. Apagar em cascata
+                for eid in ids_afetados:
+                    cursor.execute("DELETE FROM registro WHERE id_entidade = ?", (eid,))
+                    cursor.execute("DELETE FROM entidades_cargos WHERE id_entidade = ?", (eid,))
+                    cursor.execute("DELETE FROM entidades WHERE id = ?", (eid,))
+                    
+                # Se era pura, apagar da tabela raiz
+                if id_pessoa is not None and id_empresa is None:
+                    cursor.execute("DELETE FROM pessoas WHERE id = ?", (id_pessoa,))
+                elif id_empresa is not None and id_pessoa is None:
+                    cursor.execute("DELETE FROM empresas WHERE id = ?", (id_empresa,))
+                    
+                conn.commit()
+                return {"sucesso": True, "mensagem": "Entidade apagada com sucesso."}
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"sucesso": False, "mensagem": f"Erro interno ao apagar entidade: {e}"}
+
+    @classmethod
+    def editar_entidade(cls, dados: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Atualiza o nome, papéis, cargo e contatos da entidade.
+        """
+        try:
+            id_entidade = dados.get("id_entidade")
+            if not id_entidade:
+                return {"sucesso": False, "mensagem": "ID da entidade não fornecido."}
+                
+            from br.com.pdv.src.BDD.bancodb import BancoDB
+            banco = BancoDB()
+            with banco.obter_conexao() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("SELECT id_pessoa, id_empresa FROM entidades WHERE id = ?", (id_entidade,))
+                row = cursor.fetchone()
+                if not row:
+                    return {"sucesso": False, "mensagem": "Entidade não encontrada."}
+                
+                id_pessoa = row[0]
+                id_empresa = row[1]
+                
+                # Atualiza nome se fornecido
+                novo_nome = dados.get("nome")
+                if novo_nome:
+                    if id_pessoa is not None and id_empresa is None:
+                        cursor.execute("UPDATE pessoas SET nome = ? WHERE id = ?", (novo_nome, id_pessoa))
+                    elif id_empresa is not None and id_pessoa is None:
+                        cursor.execute("UPDATE empresas SET nome = ? WHERE id = ?", (novo_nome, id_empresa))
+                        
+                # Atualiza flags de papel (is_cliente, is_fornecedor, is_funcionario)
+                is_cliente = 1 if dados.get("is_cliente") else 0
+                is_fornecedor = 1 if dados.get("is_fornecedor") else 0
+                is_funcionario = 1 if dados.get("is_funcionario") else 0
+                cursor.execute(
+                    "UPDATE entidades SET cliente = ?, fornecedor = ?, funcionario = ? WHERE id = ?",
+                    (is_cliente, is_fornecedor, is_funcionario, id_entidade)
+                )
+                
+                # Atualiza cargo (apenas se fornecido)
+                novo_cargo = dados.get("cargo")
+                if novo_cargo:
+                    cursor.execute("DELETE FROM entidades_cargos WHERE id_entidade = ?", (id_entidade,))
+                    cursor.execute("INSERT INTO entidades_cargos (id_entidade, id_cargo) VALUES (?, ?)", (id_entidade, novo_cargo))
+                    
+                # Atualiza Contatos (se vieram)
+                contatos = dados.get("contatos")
+                if contatos is not None and isinstance(contatos, dict):
+                    cursor.execute("DELETE FROM registro WHERE id_entidade = ?", (id_entidade,))
+                    for k, v in contatos.items():
+                        if v:
+                            reg_tipo = cls._obter_registro_generico(k)
+                            cursor.execute("INSERT INTO registro (id_tipos_registros, id_entidade, registro) VALUES (?, ?, ?)", (reg_tipo.codigo, id_entidade, v))
+                            
+                conn.commit()
+                return {"sucesso": True, "mensagem": "Entidade atualizada com sucesso."}
+                
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"sucesso": False, "mensagem": f"Erro interno ao editar entidade: {e}"}
 
     # ─────────────────────────────────────────────────────────────────
     # 2. FLUXO DE PAGAMENTO DE NOTAS
@@ -592,6 +780,11 @@ class PaymentManager:
             if not nota_hdr:
                 return {"sucesso": False, "mensagem": f"Nota ID {id_nota} não encontrada no banco."}
 
+            if nota_hdr["id_tipoNota"] == 1:
+                saldo_atual = cls.get_resumo_financeiro_global().get("saldo_liquido_caixa", 0.0)
+                if valor > saldo_atual:
+                    return {"sucesso": False, "mensagem": f"Saldo insuficiente em caixa (Saldo atual: R$ {saldo_atual:.2f})."}
+
             data_pag = dados.get("data") or str(date.today())
 
             id_pag = DB.INSERT.FLUXO_PAGAMENTO_NOTA.executar(
@@ -611,6 +804,62 @@ class PaymentManager:
 
         except Exception as e:
             return {"sucesso": False, "mensagem": f"Erro ao registrar pagamento: {e}"}
+
+    @classmethod
+    def registrar_pagamento_por_entidade(cls, id_entidade: int, valor_total: float, id_forma_pagamento: int = 1) -> Dict[str, Any]:
+        """
+        Liquida notas em aberto da entidade, da mais antiga para a mais recente (FIFO).
+        Se houver sobra, fica como adiantamento.
+        """
+        try:
+            if valor_total <= 0:
+                return {"sucesso": False, "mensagem": "O valor precisa ser maior que zero."}
+                
+            extrato = cls.get_extrato_entidade(id_entidade)
+            notas = extrato.get("historico_notas", [])
+            
+            notas_validas = [n for n in notas if n["id_tipoNota"] in (1, 2)]
+            notas_validas.sort(key=lambda x: x["id_fluxo_nota"])
+            
+            pagamentos_realizados = []
+            valor_restante = valor_total
+            
+            for n in notas_validas:
+                if valor_restante <= 0:
+                    break
+                    
+                id_nota = n["id_fluxo_nota"]
+                v_total_nota = n["total_nota"]
+                
+                pags_nota = sum(p["valor"] for p in extrato.get("historico_pagamentos", []) if p["id_fluxo_nota"] == id_nota)
+                saldo_devedor_nota = max(0.0, v_total_nota - pags_nota)
+                
+                if saldo_devedor_nota > 0:
+                    valor_a_pagar = min(valor_restante, saldo_devedor_nota)
+                    dados_pag = {
+                        "id_fluxo_nota": id_nota,
+                        "id_forma_pagamento": id_forma_pagamento,
+                        "valor": valor_a_pagar,
+                        "data": str(date.today())
+                    }
+                    
+                    resp = cls.registrar_pagamento(dados_pag)
+                    if resp.get("sucesso"):
+                        valor_restante -= valor_a_pagar
+                        pagamentos_realizados.append({"id_fluxo_nota": id_nota, "valor_pago": valor_a_pagar})
+                    else:
+                        return {"sucesso": False, "mensagem": resp.get("mensagem")}
+                        
+            msg_sobra = f" (Sobrou R$ {valor_restante:.2f} como adiantamento)" if valor_restante > 0 else ""
+            return {
+                "sucesso": True,
+                "mensagem": f"Pagamento distribuído em {len(pagamentos_realizados)} notas" + msg_sobra,
+                "pagamentos": pagamentos_realizados,
+                "sobra": valor_restante
+            }
+            
+        except Exception as e:
+            return {"sucesso": False, "mensagem": f"Erro na liquidação por entidade: {e}"}
 
     @classmethod
     def obter_pagamentos_nota(cls, id_fluxo_nota: int) -> List[Dict[str, Any]]:
@@ -733,13 +982,10 @@ class PaymentManager:
 
     @staticmethod
     def _normalizar_reais(val: float) -> float:
-        """Converte valores do banco de milhar para reais se estiverem na escala de milhar (>= 100)."""
+        """Converte o valor para float (assumindo que o BD já armazena em reais)."""
         if val is None:
             return 0.0
-        val_f = float(val)
-        if abs(val_f) >= 100.0:
-            return MoedaReal.parseMilharParaReais(val_f)
-        return val_f
+        return float(val)
 
     @classmethod
     def _consolidar_movimentacoes_para_entidades(cls, lista_id_entidades: List[int], extrato: ExtratoFinanceiro):
@@ -799,6 +1045,7 @@ class PaymentManager:
                     extrato.pagamentos_efetuados += val_pag
 
                 extrato.historico_pagamentos.append({
+                    "id_pagamento": p.get("id"),
                     "id_fluxo_nota": id_nota,
                     "tipo_nota": tipo_nome,
                     "valor": round(val_pag, 2),
@@ -807,6 +1054,68 @@ class PaymentManager:
                 })
 
         extrato.calcular_saldos()
+
+    @classmethod
+    def get_historico_movimentacoes_global(cls) -> List[Dict[str, Any]]:
+        """Retorna o histórico completo de movimentações (notas) com status de pagamento."""
+        mapa_entidades = cls._obter_mapa_entidade_titular()
+        
+        with BancoDB.obter_conexao() as conn:
+            cursor = conn.cursor()
+            
+            query = """
+                SELECT 
+                    fne.id as id_nota,
+                    fne.id_tipoNota as tipo_nota,
+                    fne.id_representante as id_entidade,
+                    MIN(fe.data) as data_nota,
+                    SUM(ABS(fe.quantidade) * fe.valorUnidario) as valor_total,
+                    (SELECT SUM(fpn.valor) FROM fluxoPagamentoNotas fpn WHERE fpn.id_fluxo_nota = fne.id) as valor_pago
+                FROM fluxosNotasEstoque fne
+                JOIN fluxoEstoque fe ON fne.id = fe.id_fluxo_nota
+                GROUP BY fne.id, fne.id_tipoNota, fne.id_representante
+                ORDER BY data_nota DESC, fne.id DESC
+            """
+            cursor.execute(query)
+            rows = cursor.fetchall()
+
+            historico = []
+            tipos = {1: "COMPRA", 2: "VENDA", 3: "DEVOLUÇÃO", 4: "PERDA", 5: "REPOSIÇÃO/COMPENSAÇÃO"}
+            
+            for row in rows:
+                id_entidade = row['id_entidade']
+                entidade_info = mapa_entidades.get(id_entidade, {})
+                nome_entidade = entidade_info.get("nome_dono", entidade_info.get("nome", f"Desconhecido #{id_entidade}"))
+                
+                v_total = cls._normalizar_reais(row['valor_total'] or 0.0)
+                v_pago = cls._normalizar_reais(row['valor_pago'] or 0.0)
+                
+                # Para Perda (4) e Reposição (5) e Devolução (3), consideramos LIQUIDADO/SEM CUSTO?
+                # O usuário reclamou que reposição e perda não deveriam ter saldo pendente
+                if row['tipo_nota'] in (3, 4, 5):
+                    status = "CONCLUÍDO"
+                elif v_total <= 0:
+                    status = "PAGO"
+                elif v_pago >= v_total:
+                    status = "PAGO"
+                elif v_pago > 0:
+                    status = "PARCIAL"
+                else:
+                    status = "ABERTO"
+                    
+                historico.append({
+                    "id_nota": row['id_nota'],
+                    "tipo_nota_id": row['tipo_nota'],
+                    "tipo_nota_str": tipos.get(row['tipo_nota'], "OUTRO"),
+                    "id_entidade": id_entidade,
+                    "entidade_nome": nome_entidade,
+                    "data": row['data_nota'],
+                    "valor_total": round(v_total, 2),
+                    "valor_pago": round(v_pago, 2),
+                    "status_pagamento": status
+                })
+                
+            return historico
 
     @classmethod
     def get_resumo_financeiro_global(cls) -> Dict[str, Any]:
@@ -852,6 +1161,70 @@ class PaymentManager:
             "contas_a_pagar": round(contas_a_pagar, 2),
             "saldo_liquido_caixa": round(saldo_caixa, 2)
         }
+
+    @classmethod
+    def registrar_pagamentos_lote(cls, dados: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Registra múltiplos pagamentos para uma nota e entidade específicas,
+        tipicamente vindo de uma tela de "Fechamento" que divide os valores 
+        em PIX, Débito, Crédito e Dinheiro.
+        """
+        try:
+            id_entidade = dados.get("id_entidade")
+            id_nota = dados.get("id_nota")
+            pagamentos = dados.get("pagamentos", [])
+            
+            if not id_entidade or not id_nota:
+                return {"sucesso": False, "mensagem": "id_entidade e id_nota são obrigatórios."}
+                
+            if not pagamentos:
+                return {"sucesso": False, "mensagem": "Nenhum pagamento fornecido."}
+                
+            mensagens = []
+            
+            from br.com.pdv.src.BDD.bancodb import BancoDB
+            with BancoDB.obter_conexao() as conn:
+                cursor = conn.cursor()
+                
+                cursor.execute("SELECT id_tipoNota FROM fluxosNotasEstoque WHERE id = ?", (id_nota,))
+                row = cursor.fetchone()
+                if not row:
+                    return {"sucesso": False, "mensagem": f"Nota de ID {id_nota} não encontrada."}
+                    
+                tipo_nota = int(row[0])
+                
+                # Definir id_tipo_registro baseado na nota
+                if tipo_nota == 1: id_tipo_registro = 1
+                elif tipo_nota == 2: id_tipo_registro = 2
+                elif tipo_nota == 3: id_tipo_registro = 3
+                elif tipo_nota == 4: id_tipo_registro = 4
+                else: id_tipo_registro = 5
+
+                from datetime import date
+                hoje_str = str(date.today())
+
+                for p in pagamentos:
+                    id_forma = int(p.get("id_forma_pagamento", 1))
+                    valor = float(p.get("valor", 0))
+                    if valor > 0:
+                        cursor.execute("""
+                            INSERT INTO fluxoPagamentoNotas (
+                                id_fluxo_nota, 
+                                id_forma_pagamento, 
+                                valor, 
+                                data_pagamento
+                            ) VALUES (?, ?, ?, ?)
+                        """, (id_nota, id_forma, valor, hoje_str))
+                        mensagens.append(f"Pago R$ {valor:.2f} via Forma {id_forma}.")
+                        
+                conn.commit()
+
+            return {"sucesso": True, "mensagem": "Pagamentos registrados. " + " ".join(mensagens)}
+            
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return {"sucesso": False, "mensagem": f"Erro ao registrar pagamentos em lote: {e}"}
 
     # ─────────────────────────────────────────────────────────────────
     # 4. GERAÇÃO DE RELATÓRIOS EM MARKDOWN

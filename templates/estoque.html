@@ -48,6 +48,51 @@
     </div>
 </div>
 
+<!-- 🌦️ RELATÓRIO SAZONAL: CLIMA E EVENTOS -->
+<div class="metric-card" style="margin-bottom: 2rem; background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%);">
+    <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark); display: flex; align-items: center; gap: 0.5rem;">
+        <span>🌦️</span> Clima & Eventos Sazonais Próximos
+    </h3>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+        <!-- Previsão do Tempo -->
+        <div style="padding: 1.25rem; background: rgba(255,255,255,0.7); border-radius: 12px; border: 1px solid #e0f2fe; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
+            <h4 style="font-size: 0.85rem; color: #0284c7; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Condição Climática Atual</h4>
+            <div style="display: flex; align-items: center; gap: 1.25rem;">
+                <div style="font-size: 3.2rem; line-height: 1; text-shadow: 0 4px 10px rgba(0,0,0,0.1);">⛅</div>
+                <div>
+                    <div style="font-size: 2.2rem; font-weight: 800; color: var(--text-main); letter-spacing: -1px;">24°C</div>
+                    <div style="font-size: 0.95rem; color: var(--text-muted); font-weight: 500;">Parcialmente Nublado</div>
+                </div>
+            </div>
+            <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px dashed #bae6fd;">
+                <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">
+                    <strong style="color: var(--brand-blue-dark);">Amanhã:</strong> 🌧️ Chuva forte à tarde.<br>
+                    <span style="color: var(--rose);">Probabilidade de queda nas vendas de balcão.</span> Sugerimos focar em delivery.
+                </p>
+            </div>
+        </div>
+
+        <!-- Eventos Próximos -->
+        <div style="padding: 1.25rem; background: rgba(255,255,255,0.7); border-radius: 12px; border: 1px solid #e0f2fe; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
+            <h4 style="font-size: 0.85rem; color: #0284c7; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Próximos Eventos</h4>
+            <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem;">
+                <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
+                    <span><strong style="color: var(--text-main);">Fim de Mês (Pagamentos)</strong> 💰</span>
+                    <span class="badge badge-green-status" style="font-size: 0.75rem;">Em 2 dias</span>
+                </li>
+                <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
+                    <span><strong style="color: var(--text-main);">Dia dos Pais</strong> 🎁</span>
+                    <span class="badge badge-amber-status" style="font-size: 0.75rem;">Em 12 dias</span>
+                </li>
+                <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem;">
+                    <span><strong style="color: var(--text-main);">Feriado da Independência</strong> 🇧🇷</span>
+                    <span class="badge" style="font-size: 0.75rem; background:#f1f5f9; color:#64748b;">Em 40 dias</span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</div>
+
 <!-- 📦 SEÇÃO DE LOTES FIFO EM MEMÓRIA (InventoryManager _mapaEstoque) -->
 <div class="metric-card" style="margin-bottom: 2rem;">
     <h3 style="margin-bottom: 0.75rem; color: var(--brand-blue-dark);">
@@ -57,44 +102,37 @@
         Exibe a fila de consumo por prioridade de chegada (primeiro que entra, primeiro que sai). Baseado nas datas de compras.
     </p>
 
-    <div class="table-container" style="max-height: 280px; overflow-y: auto;">
-        <table class="table-custom">
+    <div class="table-container" style="max-height: 400px; overflow-x: auto; overflow-y: auto;">
+        <table class="table-custom" style="width: 100%; border-collapse: collapse;">
             <thead>
-                <tr>
-                    <th>Índice do Lote</th>
-                    <th>Nota Origem</th>
-                    <th>Cód Prod</th>
-                    <th>Qtd Inicial</th>
-                    <th>Qtd Disponível</th>
-                    <th>Custo Un (R$)</th>
-                    <th>Entrada</th>
-                    <th>Vencimento</th>
+                <tr style="background: rgba(0,0,0,0.02);">
+                    <th style="min-width: 130px; padding: 14px 18px; text-align: left;">Nota Origem</th>
+                    <th style="min-width: 300px; padding: 14px 18px; text-align: left;">Produto</th>
+                    <th style="min-width: 200px; padding: 14px 18px; text-align: left;">Fornecedor</th>
+                    <th style="min-width: 130px; padding: 14px 18px; text-align: right;">Qtd Inicial</th>
+                    <th style="min-width: 150px; padding: 14px 18px; text-align: right;">Qtd Disponível</th>
+                    <th style="min-width: 150px; padding: 14px 18px; text-align: right;">Custo Un (R$)</th>
+                    <th style="min-width: 130px; padding: 14px 18px; text-align: center;">Entrada</th>
                 </tr>
             </thead>
             <tbody>
-                {% for lote in lotes_fifo %}
-                <tr class="{% if lote.is_vencido %}row-danger{% endif %}" title="{% if lote.is_vencido %}Lote Vencido! Risco de Perda.{% else %}Lote na validade. {{ lote.status_validade }}{% endif %}">
-                    <td><span class="badge badge-purple">{{ lote.idx_lote }}</span></td>
-                    <td><a href="#" style="color: var(--brand-blue);">#{{ lote.id_nota }}</a></td>
-                    <td>Prod #{{ lote.id_produto }}</td>
-                    <td>{{ lote.qtd_inicial|floatformat:2 }} cx</td>
-                    <td>
-                        <strong class="{% if lote.is_vencido %}text-danger{% else %}text-emerald{% endif %}">
+                {% for lote in arvore_notas %}
+                <tr style="cursor: help; transition: background 0.2s;" onmouseenter="mostrarTooltipEstoque(event, {{ forloop.counter0 }})" onmousemove="moverTooltipEstoque(event)" onmouseleave="esconderTooltipEstoque()">
+                    <td style="padding: 12px 18px; text-align: left;"><a href="#" style="color: var(--brand-blue); font-weight: 600;" onclick="event.stopPropagation();">#{{ lote.id_nota }}</a></td>
+                    <td style="padding: 12px 18px; text-align: left;"><strong>{{ lote.produto_nome }}</strong></td>
+                    <td style="padding: 12px 18px; text-align: left; font-size: 0.88rem; color: var(--text-muted);">{{ lote.fornecedor }}</td>
+                    <td style="padding: 12px 18px; text-align: right;">{{ lote.qtd_inicial|floatformat:2 }} cx</td>
+                    <td style="padding: 12px 18px; text-align: right;">
+                        <strong class="text-emerald">
                             {{ lote.qtd_disponivel|floatformat:2 }} cx
                         </strong>
                     </td>
-                    <td>R$ {{ lote.custo_unitario|floatformat:2 }}</td>
-                    <td>{{ lote.data_entrada|slice:":10" }}</td>
-                    <td>
-                        <span class="badge {% if lote.is_vencido %}badge-red-status{% elif 'CRÍTICO' in lote.status_validade %}badge-amber-status{% else %}badge-green-status{% endif %}">
-                            {{ lote.validade }} ({{ lote.status_validade }})
-                        </span>
-                    </td>
+                    <td style="padding: 12px 18px; text-align: right; font-weight: 600; color: var(--brand-blue-dark);">R$ {{ lote.custo_unitario|floatformat:2 }}</td>
+                    <td style="padding: 12px 18px; text-align: center;">{{ lote.data_compra_fmt }}</td>
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum lote ativo em
-                        estoque...</td>
+                    <td colspan="8" style="text-align: center; color: var(--text-muted);">Nenhum lote ativo em estoque...</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -122,7 +160,7 @@
                 </thead>
                 <tbody>
                     {% for item in compostos %}
-                    <tr>
+                    <tr style="cursor: help; transition: background 0.2s;" onmouseenter="mostrarTooltipComposto(event, {{ forloop.counter0 }})" onmousemove="moverTooltipComposto(event)" onmouseleave="esconderTooltip()">
                         <td>#{{ item.id }}</td>
                         <td><strong>{{ item.nome }}</strong></td>
                         <td><span class="badge badge-emerald">Ficha Técnica Ativa</span></td>
@@ -164,16 +202,16 @@
                 </thead>
                 <tbody>
                     {% for item in simples %}
-                    <tr>
+                    <tr style="cursor: help; transition: background 0.2s;" onmouseenter="mostrarTooltipSimples(event, {{ forloop.counter0 }})" onmousemove="moverTooltipSimples(event)" onmouseleave="esconderTooltip()">
                         <td>#{{ item.id }}</td>
                         <td><strong>{{ item.nome }}</strong></td>
                         <td>
                             <span
                                 class="badge {% if item.estoque > 10 %}badge-green-status{% else %}badge-amber-status{% endif %}">
-                                {{ item.estoque }}
+                                {{ item.estoque_fmt }}
                             </span>
                         </td>
-                        <td>{{ item.UnidadeMedida }}</td>
+                        <td>{{ item.desc_unidade|default:"Não informada" }}</td>
                         <td>
                             {% if item.estoque > 15 %}
                             <span class="badge badge-green-status">🟢 Favorável ☀️</span>
@@ -214,35 +252,51 @@
             <details class="arvore-node" data-ativo="{{ node.is_ativo|yesno:'true,false' }}" data-search="{{ node.id_nota }} {{ node.produto_nome|lower }} {{ node.id_produto }}">
                 <summary style="padding: 0.8rem; background: rgba(0, 80, 157, 0.05); border-radius: 8px; border: 1px solid rgba(0, 80, 157, 0.15); cursor: pointer; font-weight: 500; display: flex; justify-content: space-between; align-items: center;">
                     <div>
-                        <span class="badge badge-purple" style="margin-right: 8px;">Nota #{{ node.id_nota }}</span>
+                        <span class="badge badge-purple hover-scale" style="margin-right: 8px; cursor: pointer; transition: all 0.2s;" onclick="abrirNotaTree(arguments[0] || event, {{ node.id_nota }})" title="Clique para ver detalhes desta Nota de Compra">Nota #{{ node.id_nota }}</span>
                         <strong style="color: var(--brand-blue-dark);">Prod #{{ node.id_produto }} - {{ node.produto_nome }}</strong>
-                        <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 10px;">Comprado em: {{ node.data_compra|slice:":10" }} | Qtd Inicial: {{ node.qtd_inicial }}cx</span>
+                        <span style="font-size: 0.85rem; color: var(--text-muted); margin-left: 10px;">Comprado em: {{ node.data_compra_fmt }} | Qtd Inicial: {{ node.qtd_inicial|floatformat:2 }}cx</span>
                     </div>
                     <div>
                         {% if node.is_ativo %}
-                            <span class="badge badge-green-status">Em Aberto ({{ node.qtd_disponivel }}cx disp.)</span>
+                            <span class="badge badge-green-status">Em Aberto ({{ node.qtd_disponivel|floatformat:2 }}cx disp.)</span>
                         {% else %}
                             <span class="badge" style="background: #f1f5f9; color: #64748b; border: 1px solid #cbd5e1;">Lote Esgotado</span>
                         {% endif %}
                     </div>
                 </summary>
                 
-                <!-- Filhos (Notas de Venda) -->
+                <!-- Filhos (Notas Vinculadas) -->
                 <div style="padding: 1rem 1rem 1rem 2rem; border-left: 2px dashed #cbd5e1; margin-left: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">
                     {% if node.vendas %}
                         {% for venda in node.vendas %}
-                            <div style="background: rgba(16, 185, 129, 0.05); padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); display: flex; justify-content: space-between;">
-                                <div>
-                                    <span style="font-size: 0.85rem; font-weight: 600; color: #065f46;">Nota Venda #{{ venda.id_nota_venda }}</span>
-                                    <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 8px;">Data: {{ venda.data_venda|slice:":10" }}</span>
+                            {% if venda.id_tipoNota == 4 %}
+                                <div onclick="abrirDetalhesNota({{ venda.id_nota_venda }})" class="hover-scale" style="cursor: pointer; background: rgba(239, 68, 68, 0.05); padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid rgba(239, 68, 68, 0.2); display: flex; justify-content: space-between; transition: all 0.2s;">
+                                    <div>
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #991b1b;">🔴 Nota Perda #{{ venda.id_nota_venda }}</span>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 8px;">Data: {{ venda.data_venda|slice:":10" }}</span>
+                                    </div>
+                                    <div style="font-size: 0.85rem; font-weight: 600; color: #dc2626;">-{{ venda.qtd_abatida|floatformat:2 }} cx</div>
                                 </div>
-                                <div style="font-size: 0.85rem; font-weight: 600;">
-                                    -{{ venda.qtd_abatida }} cx
+                            {% elif venda.id_tipoNota == 3 %}
+                                <div onclick="abrirDetalhesNota({{ venda.id_nota_venda }})" class="hover-scale" style="cursor: pointer; background: rgba(245, 158, 11, 0.05); padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid rgba(245, 158, 11, 0.2); display: flex; justify-content: space-between; transition: all 0.2s;">
+                                    <div>
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #b45309;">🟡 Nota Devolução #{{ venda.id_nota_venda }}</span>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 8px;">Data: {{ venda.data_venda|slice:":10" }}</span>
+                                    </div>
+                                    <div style="font-size: 0.85rem; font-weight: 600; color: #d97706;">-{{ venda.qtd_abatida|floatformat:2 }} cx</div>
                                 </div>
-                            </div>
+                            {% else %}
+                                <div onclick="abrirDetalhesNota({{ venda.id_nota_venda }})" class="hover-scale" style="cursor: pointer; background: rgba(16, 185, 129, 0.05); padding: 0.6rem 1rem; border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2); display: flex; justify-content: space-between; transition: all 0.2s;">
+                                    <div>
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #065f46;">🟢 Nota Venda #{{ venda.id_nota_venda }}</span>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 8px;">Data: {{ venda.data_venda|slice:":10" }}</span>
+                                    </div>
+                                    <div style="font-size: 0.85rem; font-weight: 600; color: #059669;">-{{ venda.qtd_abatida|floatformat:2 }} cx</div>
+                                </div>
+                            {% endif %}
                         {% endfor %}
                     {% else %}
-                        <div style="font-size: 0.85rem; color: var(--text-muted); padding: 0.5rem;">Nenhuma venda vinculada a este lote de compra ainda.</div>
+                        <div style="font-size: 0.85rem; color: var(--text-muted); padding: 0.5rem;">Nenhuma movimentação de saída vinculada a este lote ainda.</div>
                     {% endif %}
                 </div>
             </details>
@@ -259,77 +313,848 @@
     </div>
 </div>
 
-<!-- 🌙 MODAL DE FECHAMENTO DE EXPEDIENTE / VENDAS FIM DE TURNO -->
-<div id="modal-fim-turno" class="modal-overlay">
+<!-- 📄 MODAL DE DETALHES DA NOTA -->
+<div id="modal-nota-detalhes" class="modal-overlay">
     <div class="modal-box" style="max-width: 650px;">
         <div class="modal-header">
-            <h3 style="color: var(--brand-blue-dark);">🌙 Registrar Vendas de Fim de Expediente (Baixa Acumulada em
-                Lote)</h3>
-            <button class="modal-close-btn" onclick="fecharModalFimTurno()">✕</button>
+            <h3 style="color: var(--brand-blue-dark);">🧾 Detalhes da Nota <span id="mnd-tipo-nota" style="font-size: 0.85rem; font-weight: 500; margin-left: 10px; color: #3b82f6;"></span></h3>
+            <button class="modal-close-btn" onclick="fecharModalNotaDetalhes()">✕</button>
         </div>
 
-        <form onsubmit="confirmarFimTurno(event)">
+        <div>
+            <p style="font-size: 0.95rem; margin-bottom: 0.5rem;"><strong>Nota:</strong> <span id="mnd-id-nota" class="badge badge-purple"></span></p>
+            <p style="font-size: 0.95rem; margin-bottom: 0.5rem;"><strong>Data:</strong> <span id="mnd-data" style="color: var(--text-main);"></span></p>
+            <p style="font-size: 0.95rem; margin-bottom: 1.5rem;"><strong>Entidade:</strong> <span id="mnd-cliente" style="color: var(--text-main);"></span></p>
+            
+            <h4 id="mnd-itens-title" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 0.5rem; text-transform: uppercase;">Itens da Nota</h4>
+            <div style="background: white; border: 1px solid #cbd5e1; border-radius: 8px; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="background: rgba(0, 80, 157, 0.05); border-bottom: 1px solid #cbd5e1;">
+                            <th style="padding: 10px; font-size: 0.85rem; color: var(--brand-blue-dark);">Produto</th>
+                            <th style="padding: 10px; font-size: 0.85rem; color: var(--brand-blue-dark);">Qtd</th>
+                            <th style="padding: 10px; font-size: 0.85rem; color: var(--brand-blue-dark);">Valor Unit.</th>
+                            <th style="padding: 10px; font-size: 0.85rem; color: var(--brand-blue-dark);">Lucro</th>
+                        </tr>
+                    </thead>
+                    <tbody id="mnd-itens-body">
+                        <!-- Itens renderizados via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="modal-footer" style="margin-top: 1.5rem; display: flex; justify-content: flex-end; gap: 10px;">
+            <button type="button" class="btn" style="background: #e2e8f0; color: #475569;" onclick="fecharModalNotaDetalhes()">Fechar</button>
+            <button type="button" class="btn btn-emerald" id="btn-editar-nota" onclick="habilitarEdicaoNota()" style="display: none;">✏️ Editar Nota</button>
+            <button type="button" class="btn btn-emerald" id="btn-salvar-nota" onclick="salvarEdicaoNota()" style="display: none;">💾 Salvar Alterações</button>
+        </div>
+    </div>
+</div>
+
+<!-- 🌙 MODAL DE FECHAMENTO DE EXPEDIENTE / VENDAS FIM DE TURNO -->
+<div id="modal-fim-turno" class="modal-overlay">
+    <div class="modal-box" style="max-width: 1440px; width: 98vw; max-height: 95vh; display: flex; flex-direction: column;">
+        <!-- Header premium -->
+        <div style="background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 60%, #0466c8 100%); border-radius: 12px 12px 0 0; padding: 1.4rem 1.8rem; display: flex; align-items: center; justify-content: space-between;">
+            <div>
+                <div style="display:flex; align-items:center; gap:.75rem;">
+                    <span style="font-size:1.7rem;">🌙</span>
+                    <div>
+                        <h3 style="color:#fff; margin:0; font-size:1.25rem; font-weight:800; letter-spacing:.03em;">FECHAMENTO DE EXPEDIENTE</h3>
+                        <p style="color:rgba(255,255,255,.65); margin:0; font-size:.8rem; margin-top:.15rem;">Lançamento em Lote — Vendas &amp; Perdas do Turno</p>
+                    </div>
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:1.5rem;">
+                <!-- Relógio ao vivo -->
+                <div style="text-align:right;">
+                    <div id="ft-relogio" style="font-size:1.55rem; font-weight:800; color:#fff; font-family:monospace; line-height:1;">--:--:--</div>
+                    <div id="ft-data" style="font-size:.78rem; color:rgba(255,255,255,.7); margin-top:.15rem;">---</div>
+                </div>
+                <button class="modal-close-btn" onclick="fecharModalFimTurno()" style="background:rgba(255,255,255,.15); color:#fff; border:1px solid rgba(255,255,255,.25); border-radius:8px; width:36px; height:36px; font-size:1.1rem; cursor:pointer; transition: background .2s;" onmouseover="this.style.background='rgba(255,255,255,.25)'" onmouseout="this.style.background='rgba(255,255,255,.15)'">✕</button>
+            </div>
+        </div>
+
+        <form onsubmit="confirmarFimTurno(event)" style="display:flex; flex-direction:column; flex:1; overflow:hidden; padding: 1.4rem 1.8rem;">
             <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 1rem;">
-                Informe os totais acumulados de vendas do turno para abater o estoque de insumos de uma só vez segundo o
-                algoritmo FIFO do InventoryManager.
+                Informe o <strong>Estoque Físico Atual</strong>. O sistema calculará a diferença e registrará automaticamente as Vendas ou Perdas. (Valores negativos serão ignorados).
             </p>
 
             <div style="margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Selecione o Produto
-                    Vendido no Turno:</label>
-                <select id="turno-produto" class="form-control" required>
-                    {% for p in catalogo %}
-                    <option value="{{ p.id }}">{{ p.nome }} (Estoque disponível: {{ p.estoque }} {{ p.UnidadeMedida }})
-                    </option>
-                    {% endfor %}
-                </select>
+                <input type="text" id="busca-modal-fim-turno" class="input-field" placeholder="🔍 Pesquisar produto..." style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px;" onkeyup="filtrarProdutosModal()">
             </div>
 
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.25rem;">
-                <div>
-                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Qtd Total Vendida no
-                        Turno:</label>
-                    <input type="number" id="turno-qtd" step="1" class="input-field" placeholder="Ex: 25" required>
-                </div>
-                <div>
-                    <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Preço de Venda
-                        Unitário (R$):</label>
-                    <input type="number" id="turno-preco" step="0.01" class="input-field" placeholder="Ex: 15.00"
-                        required>
-                </div>
+            <div style="flex:1; overflow-y: auto; margin-bottom: 1.25rem; padding-right: 6px;">
+                <table style="width: 100%; text-align: left; border-collapse: separate; border-spacing: 0 6px;">
+                    <thead style="position: sticky; top: 0; background: white; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                        <tr style="background:linear-gradient(90deg,#f0f9ff,#eff6ff); font-size:.82rem;">
+                            <th style="padding: 12px 10px; font-size:.8rem; color:#334155; text-transform:uppercase; letter-spacing:.05em;">Produto</th>
+                            <th style="padding: 12px 8px; width: 80px; font-size:.8rem; color:#334155; text-transform:uppercase;">Sistema</th>
+                            <th style="padding: 12px 8px; width: 120px; font-size:.8rem; color:#334155; text-transform:uppercase;">Físico</th>
+                            <th style="padding: 12px 8px; width: 70px; font-size:.8rem; color:#334155; text-transform:uppercase;">Dif.</th>
+                            <th style="padding: 12px 8px; width: 90px; font-size:.8rem; color:#334155; text-transform:uppercase;">Custo</th>
+                            <th style="padding: 12px 8px; width: 100px; font-size:.8rem; color:#334155; text-transform:uppercase;">Preço (R$)</th>
+                            <th style="padding: 12px 8px; width: 90px; font-size:.8rem; color:#334155; text-transform:uppercase;">Total</th>
+                            <th style="padding: 12px 8px; width: 90px; font-size:.8rem; color:#334155; text-transform:uppercase;">Lucro</th>
+                            <th style="padding: 12px 8px; width: 100px; font-size:.8rem; color:#0466c8; text-transform:uppercase; font-weight:800; background:rgba(4,102,200,.07); border-radius:6px 6px 0 0;">📅 Hoje</th>
+                            <th style="padding: 12px 8px; width: 105px; font-size:.8rem; color:#334155; text-transform:uppercase;">Tipo Baixa</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in catalogo %}
+                        <tr style="background: {% if p.is_composto %}#f8fafc{% else %}white{% endif %}; box-shadow: 0 2px 6px rgba(0,0,0,0.06); border-radius: 8px; transition: transform 0.1s, box-shadow 0.1s;" 
+                            class="ft-row" 
+                            data-id="{{ p.id }}" 
+                            data-iscomposto="{{ p.is_composto|yesno:'true,false' }}" 
+                            data-receita='{{ p.receita_dict|default:"{}"|escapejs }}'
+                            data-customedio="{{ p.custo_medio|stringformat:'f' }}">
+                            
+                            <td style="padding: 12px 10px; border-top-left-radius: 8px; border-bottom-left-radius: 8px;">
+                                <strong>{{ p.nome }}</strong>
+                                {% if p.is_composto %}<span class="badge" style="background:#e2e8f0; color:#475569; font-size:0.7rem; margin-left:5px;">Composto</span>{% endif %}
+                            </td>
+                            <td style="padding: 12px 10px;">
+                                <span id="ft-sist-{{ p.id }}" data-estoque-original="{{ p.estoque|stringformat:'f' }}" data-estoque="{{ p.estoque|stringformat:'f' }}">
+                                    {{ p.estoque|floatformat:2 }}
+                                </span>
+                            </td>
+                            <td style="padding: 12px 10px; vertical-align: top;">
+                                <input type="number" step="any" min="0" id="ft-fisico-{{ p.id }}" class="input-field ft-fisico" data-id="{{ p.id }}" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px; margin-bottom: 4px;" oninput="calcularDiferenca({{ p.id }})">
+                                {% if 'Conjunto' in p.desc_unidade or 'Pacote' in p.desc_unidade %}
+                                <div style="display: flex; gap: 4px; align-items: center; justify-content: space-between;">
+                                    <input type="number" step="any" min="0" placeholder="Qtd" style="width: 48%; padding: 4px; font-size:0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #64748b;" title="Qtd. Fracionada (ex: 6)" oninput="let div=this.nextElementSibling.nextElementSibling.value; if(div && this.value) { document.getElementById('ft-fisico-{{ p.id }}').value = (parseFloat(this.value)/parseFloat(div)).toFixed(4); calcularDiferenca({{ p.id }}); }">
+                                    <span style="font-size:0.75rem; color:#94a3b8;">/</span>
+                                    <input type="number" step="any" min="1" placeholder="Div." style="width: 48%; padding: 4px; font-size:0.75rem; border: 1px solid #cbd5e1; border-radius: 4px; background: #f8fafc; color: #64748b;" title="Divisor (ex: 12)" oninput="let qtd=this.previousElementSibling.previousElementSibling.value; if(qtd && this.value) { document.getElementById('ft-fisico-{{ p.id }}').value = (parseFloat(qtd)/parseFloat(this.value)).toFixed(4); calcularDiferenca({{ p.id }}); }">
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td style="padding: 12px 10px;"><strong id="ft-dif-{{ p.id }}" style="color: var(--text-muted);">-</strong></td>
+                            <td style="padding: 12px 10px;">
+                                <span style="color: var(--brand-blue-dark); font-weight: 500;">{{ p.custo_medio|floatformat:2 }}</span>
+                            </td>
+                            <td style="padding: 12px 10px;">
+                                <input type="number" step="0.01" min="0" id="ft-preco-{{ p.id }}" class="input-field ft-preco-input" style="width: 100%; padding: 6px; border: 1px solid #cbd5e1; border-radius: 4px;" value="{{ p.valor_venda_calculado|stringformat:'.2f' }}" oninput="calcularDiferenca({{ p.id }})" disabled>
+                            </td>
+                            <td style="padding: 12px 10px;"><span id="ft-total-{{ p.id }}" style="color: var(--text-main); font-weight: 500;">-</span></td>
+                            <td style="padding: 12px 10px;"><span id="ft-lucro-{{ p.id }}" style="color: var(--text-emerald); font-weight: 500;">-</span></td>
+                            <td style="padding: 10px 8px; border-top-right-radius: 8px; border-bottom-right-radius: 8px; background:rgba(4,102,200,.04);">
+                                <span id="ft-hoje-{{ p.id }}" style="font-size:.82rem; color:#0466c8; font-weight:700;">-</span>
+                            </td>
+                            <td style="padding: 10px 8px; border-top-right-radius: 8px; border-bottom-right-radius: 8px;">
+                                <select id="ft-tipo-{{ p.id }}" class="form-control ft-tipo-select" style="padding: 5px; font-size: 0.82rem; width: 100%;" onchange="calcularDiferenca({{ p.id }})">
+                                    <option value="venda">Venda</option>
+                                    <option value="perda">Perda/Avaria</option>
+                                </select>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
 
-            <button type="submit" class="btn btn-emerald" style="width: 100%;">
-                ✅ Confirmar Baixa em Lote do Turno (InventoryManager.insert_venda)
-            </button>
+            <!-- Submit button -->
+            <div style="padding-top:.75rem; border-top: 1px solid #e2e8f0;">
+                <button type="submit" class="btn btn-emerald" style="width: 100%; padding:1rem; font-size:1rem; border-radius:10px;">
+                    ✅ Confirmar Fechamento (Gravar Lote)
+                </button>
+            </div>
         </form>
     </div>
 </div>
+
+<!-- MODAL DE DETALHES DO PRODUTO (Lote) -->
+<div id="modal-produto" class="modal-overlay">
+    <div class="modal-box" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3 style="color: var(--brand-blue-dark);">📦 Propriedades do Produto (Lote)</h3>
+            <button class="modal-close-btn" onclick="fecharModalProduto()">✕</button>
+        </div>
+        <div class="modal-body">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                <div>
+                    <label class="form-label" style="font-size: 0.8rem; color: var(--text-muted);">Produto</label>
+                    <div id="mp-produto" style="font-weight: 600; color: var(--brand-blue-dark); font-size: 1.1rem;"></div>
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 0.8rem; color: var(--text-muted);">Fornecedor</label>
+                    <div id="mp-fornecedor" style="font-weight: 500;"></div>
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 0.8rem; color: var(--text-muted);">Quantidade Disponível / Inicial</label>
+                    <div id="mp-quantidade" style="font-weight: 600; color: var(--text-emerald);"></div>
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 0.8rem; color: var(--text-muted);">Já Vendido (Lote)</label>
+                    <div id="mp-vendido" style="font-weight: 600; color: var(--brand-blue);"></div>
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 0.8rem; color: var(--text-muted);">Valor Total Lote</label>
+                    <div id="mp-valor" style="font-weight: 600;"></div>
+                </div>
+                <div>
+                    <label class="form-label" style="font-size: 0.8rem; color: var(--text-muted);">Data Registro</label>
+                    <div id="mp-data" style="font-weight: 500;"></div>
+                </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px solid var(--border-color); margin: 1.5rem 0;" />
+
+            <h4 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">📑 Notas de Venda Vinculadas (Rastreio)</h4>
+            <div id="mp-notas-container" style="max-height: 200px; overflow-y: auto; background: rgba(0,0,0,0.02); padding: 10px; border-radius: 8px;">
+                <ul id="mp-lista-notas" style="list-style: none; padding: 0; margin: 0;">
+                </ul>
+                <div style="text-align: center; margin-top: 10px;">
+                    <button id="mp-btn-carregar" class="btn btn-outline" style="display: none; padding: 4px 12px; font-size: 0.8rem;">Carregar Mais</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Forçando CSS do Tooltip (Popover) para o topo do stacking context */
+.row-tooltip {
+  position: absolute;
+  background: #fff; border-radius: 8px; padding: 1rem; width: max-content; min-width: 350px; max-width: 450px;
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.2), 0 8px 10px -6px rgba(0,0,0,0.1);
+  border: 1px solid #e2e8f0;
+  pointer-events: none; opacity: 0; transition: opacity .15s ease; z-index: 2147483647;
+}
+.row-tooltip.active { opacity: 1; }
+.tooltip-header { font-weight: 600; color: #1e293b; margin-bottom: 0.5rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; }
+.tooltip-body { font-size: 0.85rem; color: #475569; }
+.tooltip-vendas { margin-top: 0.5rem; border-top: 1px solid #e2e8f0; padding-top: 0.5rem; max-height: 120px; overflow-y: auto; }
+.tooltip-venda-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dashed #cbd5e1; }
+.tooltip-venda-item:last-child { border-bottom: none; }
+</style>
+
+<!-- Tooltip Container Oculto -->
+<div id="estoque-tooltip" class="row-tooltip">
+    <div class="tooltip-header" id="tt-produto">Produto</div>
+    <div class="tooltip-body">
+        <div style="display:flex; justify-content:space-between;"><span>Fornecedor:</span> <strong id="tt-fornecedor">...</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Qtd:</span> <strong id="tt-quantidade">...</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Valor Oculto:</span> <strong id="tt-valor">...</strong></div>
+        <div class="tooltip-vendas">
+            <strong style="color: #64748b; font-size: 0.8rem;">Últimas Notas Vinculadas:</strong>
+            <div id="tt-lista-notas"></div>
+        </div>
+    </div>
+</div>
+<!-- Tooltip Produto Composto -->
+<div id="composto-tooltip" class="row-tooltip">
+    <div class="tooltip-header" id="tt-comp-produto">Produto Composto</div>
+    <div class="tooltip-body">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 8px;">
+            <span>Máx. que pode ser gerado:</span> 
+            <strong id="tt-comp-max" style="color:var(--text-emerald); font-size:1.1em;">...</strong>
+        </div>
+        <div class="tooltip-vendas">
+            <strong style="color: #64748b; font-size: 0.8rem;">Receita / Insumos Necessários:</strong>
+            <div id="tt-comp-receita"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Tooltip Produto Simples -->
+<div id="simples-tooltip" class="row-tooltip">
+    <div class="tooltip-header" id="tt-simp-produto">Produto Simples</div>
+    <div class="tooltip-body">
+        <div style="display:flex; justify-content:space-between;"><span>Valor de Venda:</span> <strong id="tt-simp-valor">...</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Durabilidade (Dias):</span> <strong id="tt-simp-durab">...</strong></div>
+        <div style="display:flex; justify-content:space-between;"><span>Unidade de Medida:</span> <strong id="tt-simp-unidade">...</strong></div>
+    </div>
+</div>
+</div>
+
+<!-- Modal Pagamento Fechamento -->
+<div id="modal-pagamento-fechamento" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; padding: 2rem; border-radius: 12px; width: 90%; max-width: 450px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+        <h3 style="color: var(--brand-blue-dark); margin-bottom: 0.5rem; border-bottom: 1px solid #eee; padding-bottom: 0.5rem;">Pagamento - Nota <span id="pag-nota-id"></span></h3>
+        <p style="font-size: 0.9rem; color: #555; margin-bottom: 1.5rem;">Valor Total da Venda: <strong style="font-size: 1.1rem; color: var(--brand-blue);">R$ <span id="pag-valor-total">0.00</span></strong></p>
+        
+        <input type="hidden" id="pag-id-nota" value="">
+        <input type="hidden" id="pag-valor-total-raw" value="0">
+        
+        <div style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;">
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.25rem;">PIX (R$)</label>
+                <input type="number" id="pag-pix" step="0.01" min="0" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc;" oninput="calcularDinheiroPagamento()">
+            </div>
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.25rem;">Débito (R$)</label>
+                <input type="number" id="pag-debito" step="0.01" min="0" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc;" oninput="calcularDinheiroPagamento()">
+            </div>
+            <div>
+                <label style="display: block; font-weight: bold; margin-bottom: 0.25rem;">Crédito (R$)</label>
+                <input type="number" id="pag-credito" step="0.01" min="0" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #ccc;" oninput="calcularDinheiroPagamento()">
+            </div>
+            <div style="background: #f8fafc; padding: 0.5rem; border-radius: 4px; border: 1px dashed #cbd5e1;">
+                <label style="display: block; font-weight: bold; margin-bottom: 0.25rem; color: var(--text-emerald);">Dinheiro (R$) - Automático</label>
+                <input type="number" id="pag-dinheiro" step="0.01" class="form-control" style="width: 100%; padding: 0.5rem; border-radius: 4px; border: 1px solid #cbd5e1; background: #e2e8f0; color: #333;" readonly>
+            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 1rem;">
+            <button class="btn btn-secondary" onclick="pularPagamento()" style="padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; background: #94a3b8; color: white;">Pular</button>
+            <button class="btn" onclick="salvarPagamentoLote()" style="padding: 0.5rem 1rem; border-radius: 6px; border: none; cursor: pointer; background: var(--brand-blue); color: white;">Confirmar Recebimento</button>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
+{{ arvore_notas|json_script:"arvore-notas-data" }}
+{{ compostos|json_script:"compostos-data" }}
+{{ simples|json_script:"simples-data" }}
 <script>
+    let arvoreNotasGlobais = [];
+    let compostosGlobais = [];
+    let simplesGlobais = [];
+    try {
+        arvoreNotasGlobais = JSON.parse(document.getElementById('arvore-notas-data').textContent);
+        compostosGlobais = JSON.parse(document.getElementById('compostos-data').textContent);
+        simplesGlobais = JSON.parse(document.getElementById('simples-data').textContent);
+    } catch (e) {
+        console.error("Error parsing JSON:", e);
+    }
+
+    // --- Lógica do Modal de Pagamento ---
+    function abrirModalPagamentoFechamento(idNota, valorTotal) {
+        document.getElementById('pag-nota-id').textContent = idNota;
+        document.getElementById('pag-id-nota').value = idNota;
+        
+        document.getElementById('pag-valor-total').textContent = parseFloat(valorTotal).toFixed(2);
+        document.getElementById('pag-valor-total-raw').value = valorTotal;
+        
+        document.getElementById('pag-pix').value = '';
+        document.getElementById('pag-debito').value = '';
+        document.getElementById('pag-credito').value = '';
+        document.getElementById('pag-dinheiro').value = parseFloat(valorTotal).toFixed(2);
+        
+        document.getElementById('modal-pagamento-fechamento').style.display = 'flex';
+    }
+
+    function pularPagamento() {
+        document.getElementById('modal-pagamento-fechamento').style.display = 'none';
+        window.location.reload();
+    }
+
+    function calcularDinheiroPagamento() {
+        const total = parseFloat(document.getElementById('pag-valor-total-raw').value.replace(',', '.')) || 0;
+        const pix = parseFloat(document.getElementById('pag-pix').value.replace(',', '.')) || 0;
+        const debito = parseFloat(document.getElementById('pag-debito').value.replace(',', '.')) || 0;
+        const credito = parseFloat(document.getElementById('pag-credito').value.replace(',', '.')) || 0;
+        
+        let dinheiro = total - (pix + debito + credito);
+        if (dinheiro < 0) dinheiro = 0;
+        
+        document.getElementById('pag-dinheiro').value = dinheiro.toFixed(2);
+    }
+
+    async function salvarPagamentoLote() {
+        const idNota = document.getElementById('pag-id-nota').value;
+        const pix = parseFloat(document.getElementById('pag-pix').value) || 0;
+        const debito = parseFloat(document.getElementById('pag-debito').value) || 0;
+        const credito = parseFloat(document.getElementById('pag-credito').value) || 0;
+        const dinheiro = parseFloat(document.getElementById('pag-dinheiro').value) || 0;
+        
+        const pagamentos = [];
+        if (pix > 0) pagamentos.push({ id_forma_pagamento: 4, valor: pix }); // 4 = PIX (assumindo IDs padrão)
+        if (debito > 0) pagamentos.push({ id_forma_pagamento: 3, valor: debito }); // 3 = Cartão de Débito
+        if (credito > 0) pagamentos.push({ id_forma_pagamento: 2, valor: credito }); // 2 = Cartão de Crédito
+        if (dinheiro > 0) pagamentos.push({ id_forma_pagamento: 1, valor: dinheiro }); // 1 = Dinheiro
+        
+        if (pagamentos.length === 0) {
+            alert("Nenhum valor informado para pagamento.");
+            return;
+        }
+        
+        // O usuário quer que seja salvo sempre na entidade 1
+        const idEntidadePadrao = 1;
+
+        try {
+            const response = await fetch('/api/pagamento-lote/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    id_entidade: idEntidadePadrao,
+                    id_nota: parseInt(idNota),
+                    pagamentos: pagamentos
+                })
+            });
+            const data = await response.json();
+            if (data.sucesso) {
+                alert(`✅ ${data.mensagem}`);
+                pularPagamento();
+            } else {
+                alert(`❌ Erro: ${data.mensagem}`);
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Falha de comunicação com o servidor ao salvar pagamentos.");
+        }
+    }
+    
+    // --- Lógica Tooltips Hover ---
+    const tooltipEstoque = document.getElementById('estoque-tooltip');
+    const tooltipComposto = document.getElementById('composto-tooltip');
+    const tooltipSimples = document.getElementById('simples-tooltip');
+    
+    function esconderTooltip() {
+        tooltipEstoque.classList.remove('active');
+        tooltipComposto.classList.remove('active');
+        tooltipSimples.classList.remove('active');
+    }
+
+    function _posicionarTooltip(tooltip, event) {
+        if (!tooltip.classList.contains('active')) return;
+        const ttWidth = tooltip.offsetWidth;
+        const ttHeight = tooltip.offsetHeight;
+        let posX = event.pageX + 5;
+        let posY = event.pageY + 5;
+        if (posX + ttWidth > window.innerWidth) posX = event.pageX - ttWidth - 15;
+        if (posY + ttHeight > window.innerHeight + window.scrollY) posY = event.pageY - ttHeight - 15;
+        tooltip.style.left = posX + 'px';
+        tooltip.style.top = posY + 'px';
+    }
+
+    // --- TOOLTIP ESTOQUE FIFO ---
+    function mostrarTooltipEstoque(event, index) {
+        try {
+            const lote = arvoreNotasGlobais[index];
+            if (!lote) return;
+            document.getElementById('tt-produto').textContent = lote.produto_nome;
+            document.getElementById('tt-fornecedor').textContent = lote.fornecedor;
+            document.getElementById('tt-quantidade').textContent = `${parseFloat(lote.qtd_disponivel).toFixed(2)} / ${parseFloat(lote.qtd_inicial).toFixed(2)} cx`;
+            document.getElementById('tt-valor').textContent = `R$ ${parseFloat(lote.valor_total).toFixed(2)}`;
+            const listContainer = document.getElementById('tt-lista-notas');
+            listContainer.innerHTML = '';
+            if (lote.vendas && lote.vendas.length > 0) {
+                const topVendas = lote.vendas.slice(0, 5);
+                topVendas.forEach(v => {
+                    let prefix = "🟢"; let color = "#065f46";
+                    if(v.id_tipoNota === 4) { prefix = "🔴"; color = "#991b1b"; }
+                    else if(v.id_tipoNota === 3) { prefix = "🟡"; color = "#b45309"; }
+
+                    listContainer.innerHTML += `
+                        <div class="tooltip-venda-item">
+                            <span><strong style="color:${color};">${prefix} #${v.id_nota_venda}</strong> (${v.data_venda})</span>
+                            <span style="color:#ef4444; font-weight:600;">-${parseFloat(v.qtd_abatida).toFixed(2)} cx</span>
+                        </div>
+                    `;
+                });
+                if (lote.vendas.length > 5) listContainer.innerHTML += `<div style="text-align:center; font-size:0.8rem; color:#64748b; margin-top:4px;">+ ${lote.vendas.length - 5} outras saídas...</div>`;
+            } else {
+                listContainer.innerHTML = `<div style="color: #94a3b8; padding: 4px 0;">0 notas vinculadas.</div>`;
+            }
+            esconderTooltip();
+            tooltipEstoque.classList.add('active');
+            _posicionarTooltip(tooltipEstoque, event);
+        } catch (e) { console.error(e); }
+    }
+    
+    function moverTooltipEstoque(event) { _posicionarTooltip(tooltipEstoque, event); }
+    
+    // --- TOOLTIP COMPOSTO ---
+    function mostrarTooltipComposto(event, index) {
+        try {
+            const item = compostosGlobais[index];
+            if (!item) return;
+            document.getElementById('tt-comp-produto').textContent = item.nome;
+            document.getElementById('tt-comp-max').textContent = `${item.max_produzir} cx`;
+            const listContainer = document.getElementById('tt-comp-receita');
+            listContainer.innerHTML = '';
+            if (item.detalhes_receita && item.detalhes_receita.length > 0) {
+                item.detalhes_receita.forEach(ing => {
+                    const usaFormatado = Number(parseFloat(ing.qtd).toFixed(4)).toString();
+                    const temFormatado = Number(parseFloat(ing.estoque).toFixed(2)).toString();
+                    listContainer.innerHTML += `
+                        <div class="tooltip-venda-item">
+                            <span><strong style="color:var(--brand-blue);">${ing.nome}</strong></span>
+                            <span style="color:#475569; font-size:0.9em;">
+                                Usa: <strong>${usaFormatado}</strong> (Tem: ${temFormatado})
+                            </span>
+                        </div>
+                    `;
+                });
+            } else {
+                listContainer.innerHTML = `<div style="color: #94a3b8; padding: 4px 0;">Sem ficha técnica.</div>`;
+            }
+            esconderTooltip();
+            tooltipComposto.classList.add('active');
+            _posicionarTooltip(tooltipComposto, event);
+        } catch (e) { console.error(e); }
+    }
+    function moverTooltipComposto(event) { _posicionarTooltip(tooltipComposto, event); }
+    
+    // --- TOOLTIP SIMPLES ---
+    function mostrarTooltipSimples(event, index) {
+        try {
+            const item = simplesGlobais[index];
+            if (!item) return;
+            document.getElementById('tt-simp-produto').textContent = item.nome;
+            document.getElementById('tt-simp-valor').textContent = `R$ ${item.valor_venda_fmt}`;
+            document.getElementById('tt-simp-durab').textContent = `${item.durabilidade} dias`;
+            document.getElementById('tt-simp-unidade').textContent = item.desc_unidade || 'Não informada';
+            esconderTooltip();
+            tooltipSimples.classList.add('active');
+            _posicionarTooltip(tooltipSimples, event);
+        } catch (e) { console.error(e); }
+    }
+    function moverTooltipSimples(event) { _posicionarTooltip(tooltipSimples, event); };
+
+    // --- Fim Modal Detalhes Produto ---
+
+    function filtrarProdutosModal() {
+        const termo = document.getElementById('busca-modal-fim-turno').value.toLowerCase();
+        const rows = document.querySelectorAll('.ft-row');
+        rows.forEach(row => {
+            const nomeProduto = row.querySelector('td:first-child strong').textContent.toLowerCase();
+            if (nomeProduto.includes(termo)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+
+    // ── Relógio ao vivo ─────────────────────────────────────────────────
+    let _ftClockInterval = null;
+    function _ftAtualizarRelogio() {
+        const agora = new Date();
+        const hh = String(agora.getHours()).padStart(2,'0');
+        const mm = String(agora.getMinutes()).padStart(2,'0');
+        const ss = String(agora.getSeconds()).padStart(2,'0');
+        const el = document.getElementById('ft-relogio');
+        if (el) el.textContent = `${hh}:${mm}:${ss}`;
+        const dias = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+        const meses = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+        const elD = document.getElementById('ft-data');
+        if (elD) elD.textContent = `${dias[agora.getDay()]}, ${String(agora.getDate()).padStart(2,'0')} ${meses[agora.getMonth()]} ${agora.getFullYear()}`;
+    }
+
+    // ── Carrega vendas de hoje na coluna "Hoje" ──────────────────────────
+    function _ftCarregarHoje() {
+        // Busca vendas do dia pela API existente de fluxo
+        const hoje = new Date();
+        const dd = String(hoje.getDate()).padStart(2,'0');
+        const mm2 = String(hoje.getMonth()+1).padStart(2,'0');
+        const yyyy = hoje.getFullYear();
+        fetch(`/api/vendas-hoje/?data=${yyyy}-${mm2}-${dd}`)
+            .then(r => r.ok ? r.json() : null)
+            .then(data => {
+                if (!data) return;
+                (data.vendas || []).forEach(v => {
+                    const el = document.getElementById(`ft-hoje-${v.id_produto}`);
+                    if (el) {
+                        el.textContent = parseFloat(v.qtd_total).toFixed(2);
+                        el.title = `R$ ${parseFloat(v.valor_total).toFixed(2)}`;
+                    }
+                });
+            })
+            .catch(() => {}); // silencia erro se endpoint não existir
+    }
+
     function abrirModalFimTurno() {
         document.getElementById('modal-fim-turno').classList.add('active');
+        _ftAtualizarRelogio();
+        _ftClockInterval = setInterval(_ftAtualizarRelogio, 1000);
+        _ftCarregarHoje();
     }
 
     function fecharModalFimTurno() {
         document.getElementById('modal-fim-turno').classList.remove('active');
+        if (_ftClockInterval) { clearInterval(_ftClockInterval); _ftClockInterval = null; }
+    }
+
+    function fecharModalNotaDetalhes() {
+        document.getElementById('modal-nota-detalhes').classList.remove('active');
+    }
+
+    function abrirNotaTree(e, notaId) {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        abrirDetalhesNota(notaId);
+    }
+
+    function abrirDetalhesNota(notaId) {
+        document.getElementById('btn-editar-nota').style.display = 'none';
+        document.getElementById('btn-salvar-nota').style.display = 'none';
+        document.getElementById('btn-editar-nota').dataset.notaId = notaId;
+
+        fetch(`/api/nota/${notaId}/`)
+            .then(response => {
+                if (!response.ok) throw new Error("Erro ao buscar nota");
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('mnd-tipo-nota').textContent = data.tipo ? `(Tipo: ${data.tipo})` : '';
+                document.getElementById('mnd-id-nota').textContent = `#${data.id}`;
+                document.getElementById('mnd-data').textContent = data.data || 'N/A';
+                document.getElementById('mnd-cliente').textContent = data.cliente || 'Não Informado';
+                
+                const tbody = document.getElementById('mnd-itens-body');
+                tbody.innerHTML = '';
+                
+                if (data.itens && data.itens.length > 0) {
+                    data.itens.forEach(item => {
+                        const tr = document.createElement('tr');
+                        tr.style.borderBottom = "1px solid #f1f5f9";
+                        tr.innerHTML = `
+                            <td style="padding: 8px 10px; font-size: 0.85rem;" data-id="${item.id_produto}"><strong>#${item.id_produto}</strong> - ${item.produto_nome}</td>
+                            <td style="padding: 8px 10px; font-size: 0.85rem;" class="td-qtd" data-val="${item.quantidade}">${parseFloat(item.quantidade).toFixed(2)} cx</td>
+                            <td style="padding: 8px 10px; font-size: 0.85rem;" class="td-valor" data-val="${item.valorUnidario}">R$ ${parseFloat(item.valorUnidario).toFixed(2)}</td>
+                            <td style="padding: 8px 10px; font-size: 0.85rem; color: #10b981; font-weight: 600;">R$ ${parseFloat(item.lucroTotal).toFixed(2)}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                    document.getElementById('btn-editar-nota').style.display = 'inline-block';
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="4" style="padding: 10px; text-align: center; font-size: 0.85rem; color: #64748b;">Nenhum item encontrado nesta nota.</td></tr>';
+                }
+                
+                document.getElementById('modal-nota-detalhes').classList.add('active');
+            })
+            .catch(error => {
+                console.error(error);
+                alert("Não foi possível carregar os detalhes da nota.");
+            });
+    }
+
+    function habilitarEdicaoNota() {
+        document.getElementById('btn-editar-nota').style.display = 'none';
+        document.getElementById('btn-salvar-nota').style.display = 'inline-block';
+        
+        const trs = document.querySelectorAll('#mnd-itens-body tr');
+        trs.forEach(tr => {
+            const tdQtd = tr.querySelector('.td-qtd');
+            const tdValor = tr.querySelector('.td-valor');
+            if(tdQtd && tdValor) {
+                const qtd = tdQtd.getAttribute('data-val');
+                const valor = tdValor.getAttribute('data-val');
+                
+                tdQtd.innerHTML = `<input type="number" step="any" min="0" class="input-field input-edit-qtd" style="width: 80px; padding: 4px;" value="${qtd}"> cx`;
+                tdValor.innerHTML = `R$ <input type="number" step="0.01" min="0" class="input-field input-edit-valor" style="width: 80px; padding: 4px;" value="${valor}">`;
+            }
+        });
+    }
+
+    async function salvarEdicaoNota() {
+        const notaId = document.getElementById('btn-editar-nota').dataset.notaId;
+        const trs = document.querySelectorAll('#mnd-itens-body tr');
+        const itens = [];
+        
+        trs.forEach(tr => {
+            const tdId = tr.querySelector('td[data-id]');
+            const inputQtd = tr.querySelector('.input-edit-qtd');
+            const inputValor = tr.querySelector('.input-edit-valor');
+            
+            if (tdId && inputQtd && inputValor) {
+                itens.push({
+                    id_produto: parseInt(tdId.getAttribute('data-id')),
+                    quantidade: parseFloat(inputQtd.value) || 0,
+                    valorUnidario: parseFloat(inputValor.value) || 0
+                });
+            }
+        });
+
+        if(itens.length === 0) return;
+
+        try {
+            const resp = await fetch(`/api/nota/${notaId}/editar/`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ itens })
+            });
+            const res = await resp.json();
+            
+            if (res.sucesso) {
+                alert(`✅ ${res.mensagem}`);
+                window.location.reload();
+            } else {
+                alert(`❌ Erro: ${res.mensagem}`);
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Falha ao salvar edições.");
+        }
+    }
+
+    function calcularDiferenca(id) {
+        // Apenas aciona o recalculo global
+        recalcularTudo();
+    }
+
+    function recalcularTudo() {
+        const rows = document.querySelectorAll('.ft-row');
+        
+        // 1. Mapear deduções de ingredientes a partir dos produtos compostos
+        const deducoes = {};
+        
+        rows.forEach(row => {
+            const isComposto = row.getAttribute('data-iscomposto') === 'true';
+            if (isComposto) {
+                const id = row.getAttribute('data-id');
+                const sistOrig = parseFloat(document.getElementById('ft-sist-' + id).getAttribute('data-estoque-original')) || 0;
+                const fisicoInput = row.querySelector('.ft-fisico');
+                
+                if (fisicoInput.value !== '') {
+                    const fisico = parseFloat(fisicoInput.value) || 0;
+                    let dif = sistOrig - fisico;
+                    if (dif < 0) dif = 0; // Ignorar ganhos fictícios na dedução
+                    
+                    if (dif > 0) {
+                        try {
+                            const receitaStr = row.getAttribute('data-receita') || '{}';
+                            const receita = JSON.parse(receitaStr.replace(/'/g, '"'));
+                            
+                            for (const [ingId, qtd] of Object.entries(receita)) {
+                                deducoes[ingId] = (deducoes[ingId] || 0) + (dif * parseFloat(qtd));
+                            }
+                        } catch(e) { console.error("Erro ao parsear receita", e); }
+                    }
+                }
+            }
+        });
+        
+        // 2. Aplicar deduções e recalcular linhas (Totais, Lucros, Diferenças)
+        rows.forEach(row => {
+            const id = row.getAttribute('data-id');
+            const sistOrig = parseFloat(document.getElementById('ft-sist-' + id).getAttribute('data-estoque-original')) || 0;
+            const sistSpan = document.getElementById('ft-sist-' + id);
+            
+            // Abater deduções se houver
+            const deducao = deducoes[id] || 0;
+            const sistAtual = sistOrig - deducao;
+            
+            // Atualizar UI do Sistema
+            sistSpan.textContent = sistAtual.toFixed(2);
+            sistSpan.setAttribute('data-estoque', sistAtual); // Atualiza o current
+            
+            const fisicoInput = row.querySelector('.ft-fisico');
+            
+            // Se o ingrediente está sendo deduzido por uma receita composta (deducao > 0)
+            if (deducao > 0) {
+                fisicoInput.value = sistAtual.toFixed(2);
+                row.style.backgroundColor = 'rgba(253, 224, 71, 0.4)'; // Cor amarela (sobrepor e alertar)
+            } else {
+                const isComposto = row.getAttribute('data-iscomposto') === 'true';
+                row.style.backgroundColor = isComposto ? '#f8fafc' : 'white';
+            }
+            
+            // Calcular diferença
+            const difEl = document.getElementById('ft-dif-' + id);
+            const precoInput = document.getElementById('ft-preco-' + id);
+            const tipoSelect = document.getElementById('ft-tipo-' + id);
+            const totalEl = document.getElementById('ft-total-' + id);
+            const lucroEl = document.getElementById('ft-lucro-' + id);
+            
+            const custoMedio = parseFloat(row.getAttribute('data-customedio')) || 0;
+            const tipo = tipoSelect.value;
+            const preco = parseFloat(precoInput.value.replace(',', '.')) || 0;
+            
+            if (fisicoInput.value === '') {
+                difEl.textContent = '-';
+                difEl.style.color = 'var(--text-muted)';
+                precoInput.disabled = true;
+                precoInput.required = false;
+                totalEl.textContent = '-';
+                lucroEl.textContent = '-';
+                return;
+            }
+
+            const fisico = parseFloat(fisicoInput.value.replace(',', '.')) || 0;
+            const dif = sistAtual - fisico;
+
+            if (dif > 0) {
+                difEl.textContent = dif.toFixed(2);
+                difEl.style.color = 'var(--text-emerald)';
+                
+                if (tipo === 'venda') {
+                    precoInput.disabled = false;
+                    precoInput.required = true;
+                    
+                    const total = dif * preco;
+                    const lucro = total - (dif * custoMedio);
+                    
+                    totalEl.textContent = `R$ ${total.toFixed(2)}`;
+                    lucroEl.textContent = `R$ ${lucro.toFixed(2)}`;
+                    lucroEl.style.color = lucro >= 0 ? 'var(--text-emerald)' : 'var(--text-red)';
+                } else { // perda
+                    precoInput.disabled = true;
+                    precoInput.required = false;
+                    
+                    const perdaCusto = dif * custoMedio;
+                    totalEl.textContent = '-';
+                    lucroEl.textContent = `- R$ ${perdaCusto.toFixed(2)}`;
+                    lucroEl.style.color = 'var(--text-red)';
+                }
+                
+            } else if (dif < 0) {
+                difEl.textContent = dif.toFixed(2);
+                difEl.style.color = 'var(--text-red)';
+                precoInput.disabled = true;
+                precoInput.required = false;
+                totalEl.textContent = '-';
+                lucroEl.textContent = '-';
+            } else {
+                difEl.textContent = '0.00';
+                difEl.style.color = 'var(--text-muted)';
+                precoInput.disabled = true;
+                precoInput.required = false;
+                totalEl.textContent = '-';
+                lucroEl.textContent = '-';
+            }
+        });
     }
 
     async function confirmarFimTurno(e) {
         e.preventDefault();
 
-        const prodId = parseInt(document.getElementById('turno-produto').value);
-        const qtd = parseFloat(document.getElementById('turno-qtd').value);
-        const preco = parseFloat(document.getElementById('turno-preco').value);
+        const baixas = [];
+        const inputsFisico = document.querySelectorAll('.ft-fisico');
+        let erro = false;
+
+        inputsFisico.forEach(input => {
+            if (input.value !== '') {
+                const id = input.getAttribute('data-id');
+                const sist = parseFloat(document.getElementById('ft-sist-' + id).getAttribute('data-estoque')) || 0;
+                const fisico = parseFloat(input.value.replace(',', '.')) || 0;
+                const dif = sist - fisico;
+
+                if (dif > 0) {
+                    const tipo = document.getElementById('ft-tipo-' + id).value;
+                    const preco = document.getElementById('ft-preco-' + id).value;
+                    
+                    if (tipo === 'venda' && (!preco || parseFloat(preco.replace(',', '.')) <= 0)) {
+                        alert("Informe o preço unitário para todas as Vendas com diferença positiva.");
+                        erro = true;
+                    }
+
+                    baixas.push({
+                        id_produto: parseInt(id),
+                        quantidade: dif,
+                        tipo: tipo,
+                        valorVenda: tipo === 'venda' ? parseFloat(preco.replace(',', '.')) : null
+                    });
+                }
+            }
+        });
+
+        if (erro) return;
+
+        if (baixas.length === 0) {
+            alert("Nenhuma diferença válida para realizar baixa. (Preencha as linhas que tiveram saídas e onde Sistema > Físico).");
+            return;
+        }
 
         const payload = {
-            id_cliente: null,
             data: new Date().toISOString().split('T')[0],
-            produtos: [{ id: prodId, quantidade: qtd, valorVenda: preco }],
-            id_forma_pagamento: 1,
-            valor_pagamento: qtd * preco
+            baixas: baixas
         };
 
         try {
@@ -341,13 +1166,20 @@
             const res = await resp.json();
 
             if (res.sucesso) {
-                alert(`✅ ${res.mensagem}`);
-                window.location.reload();
+                if (res.id_venda) {
+                    fecharModalFimTurno();
+                    abrirModalPagamentoFechamento(res.id_venda, res.valor_venda);
+                } else {
+                    alert(`✅ ${res.mensagem}`);
+                    fecharModalFimTurno();
+                    window.location.reload();
+                }
             } else {
-                alert(`❌ Erro no fechamento: ${res.mensagem}`);
+                alert(`❌ Erro: ${res.mensagem}`);
             }
         } catch (err) {
-            alert(`❌ Erro: ${err}`);
+            console.error(err);
+            alert("Falha de comunicação com o servidor.");
         }
     }
 
@@ -404,5 +1236,16 @@
         // Inicializa
         atualizarArvore();
     });
+
+    // ── Ripple em todos os botões ─────────────────────────────────────────
+    document.addEventListener('click', function(e) {
+        const btn = e.target.closest('.btn');
+        if (!btn) return;
+        btn.classList.remove('rippling');
+        void btn.offsetWidth; // force reflow
+        btn.classList.add('rippling');
+        btn.addEventListener('animationend', () => btn.classList.remove('rippling'), { once: true });
+    });
+
 </script>
 {% endblock %}

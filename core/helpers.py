@@ -23,6 +23,8 @@ def _safe(fn, fallback):
             return fallback
         return resultado
     except Exception as exc:  # backend/banco indisponível, tabela vazia, etc.
+        import traceback
+        traceback.print_exc()
         print(f"[core.helpers] usando dados de demonstração: {exc}")
         return fallback
 
@@ -134,28 +136,112 @@ def _backend():
     from br.com.pdv.src.BDD.queryEnum import DB
     from br.com.pdv.src.memory.inventoryManager import InventoryManager
     from br.com.pdv.src.memory.paymentManager import PaymentManager
+    from br.com.pdv.src.financeiro.Real import MoedaReal
     return DB, InventoryManager, PaymentManager
 
 
 # ─────────────────────────────────────────────────────────────────────────
 # Catálogo de produtos (junta estoque calculado + nome/unidade do banco)
+# Para produtos compostos, o estoque é calculado a partir dos ingredientes.
 # ─────────────────────────────────────────────────────────────────────────
+def _calcular_estoque_liquido_db(conn):
+    """Retorna dict {id_produto: estoque_liquido} calculado diretamente do banco."""
+    cur = conn.cursor()
+    cur.execute('''
+        SELECT id_produto,
+               SUM(CASE WHEN id_tipoNota IN (1,5) THEN quantidade
+                        WHEN id_tipoNota IN (2,4) THEN -quantidade
+                        WHEN id_tipoNota = 3      THEN  quantidade
+                        ELSE 0 END) AS estoque_liquido
+        FROM fluxoEstoque
+        GROUP BY id_produto
+    ''')
+    return {r['id_produto']: max(float(r['estoque_liquido'] or 0), 0) for r in cur.fetchall()}
+
+
+def _calcular_estoque_composto(id_produto, receita_dict, estoque_liquido_map):
+    """
+    Calcula quantas unidades do produto composto podem ser fabricadas
+    com base no estoque liquido de cada ingrediente.
+    receita_dict: {str(id_ingr): qntdd_por_unidade_composta}
+    Retorna float com o numero de unidades possíveis (floor do mínimo).
+    """
+    import math
+    minimo = float('inf')
+    for id_ingr_str, qtd_por_un in receita_dict.items():
+        try:
+            id_ingr = int(id_ingr_str)
+            qtd_por_un = float(qtd_por_un)
+        except (ValueError, TypeError):
+            continue
+        if qtd_por_un <= 0:
+            continue
+        estoque_ingr = estoque_liquido_map.get(id_ingr, 0)
+        possivel = estoque_ingr / qtd_por_un
+        if possivel < minimo:
+            minimo = possivel
+    if minimo == float('inf') or minimo < 0:
+        return 0
+    return math.floor(minimo)
+
+
 def get_produtos_catalogo():
     def _real():
         DB, InventoryManager, _ = _backend()
         produtos_db = DB.SELECT.VW_PRODUTO_COMPLETO_TODOS.buscar()
         if not produtos_db:
             return []
-        estoque_por_id = {p["id"]: p for p in InventoryManager.get_produtos_lista()}
+
+        from br.com.pdv.src.BDD.bancodb import BancoDB
+        with BancoDB.obter_conexao() as conn:
+            cur = conn.cursor()
+
+            # Médias de venda por produto (para preencher preço quando varejo=0)
+            cur.execute('''
+                SELECT fe.id_produto, AVG(fe.valorUnidario) as media_venda
+                FROM fluxoEstoque fe
+                WHERE fe.id_tipoNota = 2
+                GROUP BY fe.id_produto
+            ''')
+            medias = {row['id_produto']: row['media_venda'] for row in cur.fetchall()}
+
+            # Estoque líquido calculado diretamente (mais preciso que InventoryManager em memória)
+            estoque_liquido_map = _calcular_estoque_liquido_db(conn)
+
+            # Receitas: {id_produto: {id_ingrediente: qntdd}}
+            cur.execute('SELECT id_produto, id_ingrediente, qntdd FROM receita')
+            receitas_rows = cur.fetchall()
+
+        receitas_map = {}  # {id_produto: {str(id_ingr): float(qntdd)}}
+        for r in receitas_rows:
+            pid = r['id_produto']
+            if pid not in receitas_map:
+                receitas_map[pid] = {}
+            receitas_map[pid][str(r['id_ingrediente'])] = float(r['qntdd'])
+
         catalogo = []
         for p in produtos_db:
-            info = estoque_por_id.get(p["id"], {})
+            pid = p["id"]
+            valor_venda = float(p.get("varejo") or 0.0)
+            if valor_venda <= 0:
+                valor_venda = float(medias.get(pid, 0.0) or 0.0)
+
+            eh_composto = pid in receitas_map
+
+            if eh_composto:
+                # Estoque do composto = mínimo de (estoque_ingr / qntdd) entre todos ingredientes
+                estoque = _calcular_estoque_composto(pid, receitas_map[pid], estoque_liquido_map)
+            else:
+                estoque = max(float(estoque_liquido_map.get(pid, 0)), 0)
+
             catalogo.append({
-                "id": p["id"],
+                "id": pid,
                 "nome": p["nome"],
                 "UnidadeMedida": p.get("unidade_descricao") or "Unidade",
-                "estoque": info.get("qtd_estoque", 0),
-                "eh_composto": info.get("eh_composto", False),
+                "estoque": estoque,
+                "eh_composto": eh_composto,
+                "receita": receitas_map.get(pid, {}),  # exposto para JS se necessário
+                "valor_venda": valor_venda,
             })
         catalogo.sort(key=lambda x: x["id"])
         return catalogo
@@ -362,17 +448,86 @@ def fornecedores_context():
     return {"fornecedores": get_fornecedores()}
 
 
+def get_grafico_lucratividade():
+    """Retorna dados diários agrupados de vendas, compras, lucro, perdas e devoluções para o gráfico."""
+    def _real():
+        from br.com.pdv.src.BDD.bancodb import BancoDB
+        with BancoDB.obter_conexao() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT
+                    DATE(fe.data) as dia,
+                    SUM(CASE WHEN fe.id_tipoNota = 1 THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) as compras,
+                    SUM(CASE WHEN fe.id_tipoNota = 2 THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) as vendas,
+                    SUM(CASE WHEN fe.id_tipoNota = 2 THEN fe.lucroTotal ELSE 0 END) as lucro,
+                    SUM(CASE WHEN fe.id_tipoNota = 3 THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) as devolucoes,
+                    SUM(CASE WHEN fe.id_tipoNota = 4 THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) as perdas
+                FROM fluxoEstoque fe
+                GROUP BY DATE(fe.data)
+                ORDER BY DATE(fe.data) ASC
+            """)
+            rows = [dict(r) for r in cur.fetchall()]
+        result = []
+        for r in rows:
+            result.append({
+                'dia': r['dia'] or '',
+                'compras': round(r['compras'] or 0, 2),
+                'vendas': round(r['vendas'] or 0, 2),
+                'lucro': round(r['lucro'] or 0, 2),
+                'devolucoes': round(r['devolucoes'] or 0, 2),
+                'perdas': round(r['perdas'] or 0, 2),
+            })
+        return result
+    return _safe(_real, [])
+
+
+def get_relatorio_por_entidade():
+    """Retorna lista de entidades (clientes/fornecedores) com totais financeiros consolidados."""
+    def _real():
+        _, _, PaymentManager = _backend()
+        entidades = PaymentManager.obter_entidades_detalhadas()
+        resultado = []
+        for ent in entidades:
+            if not ent.get('is_cliente') and not ent.get('is_fornecedor'):
+                continue
+            nome = ent.get('pessoa_nome') or ent.get('empresa_nome') or f"Entidade #{ent['id_entidade']}"
+            resultado.append({
+                'id_entidade': ent['id_entidade'],
+                'nome': nome,
+                'tipo_entidade': ent.get('tipo_entidade', ''),
+                'is_cliente': ent.get('is_cliente', False),
+                'is_fornecedor': ent.get('is_fornecedor', False),
+                'saldo_devedor_cliente': ent.get('saldo_devedor_cliente', 0.0),
+                'saldo_devedor_fornecedor': ent.get('saldo_devedor_fornecedor', 0.0),
+                'adiantamento_cliente': ent.get('adiantamento_cliente', 0.0),
+                'adiantamento_fornecedor': ent.get('adiantamento_fornecedor', 0.0),
+            })
+        return resultado
+    return _safe(_real, [])
+
+
 def financeiro_context():
+    _, _, PaymentManager = _backend()
+    import json
+    grafico_dados = get_grafico_lucratividade()
     return {
         "resumo": get_resumo_financeiro(),
         "entidades": get_entidades_detalhadas(),
         "formas_pagamento": get_formas_pagamento(),
+        "movimentacoes": _safe(PaymentManager.get_historico_movimentacoes_global, []),
+        "relatorio_entidades": get_relatorio_por_entidade(),
+        "grafico_json": json.dumps(grafico_dados),
     }
 
 
 def entidades_context():
+    entidades = get_entidades_detalhadas()
+    pessoas_puras = [e for e in entidades if e.get('tipo_entidade') == 'PESSOA_PURA']
+    empresas_puras = [e for e in entidades if e.get('tipo_entidade') == 'EMPRESA_PURA']
     return {
-        "entidades": get_entidades_detalhadas(),
+        "entidades": entidades,
+        "pessoas_puras": pessoas_puras,
+        "empresas_puras": empresas_puras,
         "cargos": get_cargos(),
     }
 
@@ -384,6 +539,115 @@ def relatorios_context():
     }
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# Notas de Venda e Devolução para o PDV
+# ─────────────────────────────────────────────────────────────────────────
+def get_notas_venda():
+    """Retorna lista de Notas de Venda (tipo 2) com nome do cliente."""
+    def _real():
+        from br.com.pdv.src.BDD.bancodb import BancoDB
+        with BancoDB.obter_conexao() as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT
+                    fn.id,
+                    fn.data_vencimento,
+                    fn.id_representante,
+                    COALESCE(pe.nome, em.nome, 'Consumidor ' || fn.id_representante) AS nome_cliente,
+                    SUM(ABS(fe.quantidade) * fe.valorUnidario) AS valor_total
+                FROM fluxosNotasEstoque fn
+                LEFT JOIN entidades en ON en.id = fn.id_representante
+                LEFT JOIN pessoas pe ON pe.id = en.id_pessoa
+                LEFT JOIN empresas em ON em.id = en.id_empresa
+                LEFT JOIN fluxoEstoque fe ON fe.id_fluxo_nota = fn.id
+                WHERE fn.id_tipoNota = 2
+                GROUP BY fn.id
+                ORDER BY fn.id DESC
+                LIMIT 100
+            ''')
+            notas = []
+            for r in cur.fetchall():
+                notas.append({
+                    'id': r['id'],
+                    'data': str(r['data_vencimento']) if r['data_vencimento'] else '',
+                    'id_cliente': r['id_representante'],
+                    'nome_cliente': r['nome_cliente'] or '',
+                    'valor_total': round(float(r['valor_total'] or 0), 2),
+                })
+        return notas
+    return _safe(_real, [])
+
+
+def get_notas_devolucao():
+    """Retorna lista de Notas de Devolução (tipo 3) com referência à venda de origem."""
+    def _real():
+        from br.com.pdv.src.BDD.bancodb import BancoDB
+        with BancoDB.obter_conexao() as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT
+                    fn.id,
+                    fn.data_vencimento,
+                    fn.id_representante,
+                    COALESCE(pe.nome, em.nome, 'Entidade ' || fn.id_representante) AS nome_cliente,
+                    SUM(ABS(fe.quantidade) * fe.valorUnidario) AS valor_total,
+                    MIN(fe.id_notaOrigem) AS id_nota_venda_origem
+                FROM fluxosNotasEstoque fn
+                LEFT JOIN entidades en ON en.id = fn.id_representante
+                LEFT JOIN pessoas pe ON pe.id = en.id_pessoa
+                LEFT JOIN empresas em ON em.id = en.id_empresa
+                LEFT JOIN fluxoEstoque fe ON fe.id_fluxo_nota = fn.id
+                WHERE fn.id_tipoNota = 3
+                GROUP BY fn.id
+                ORDER BY fn.id DESC
+                LIMIT 100
+            ''')
+            notas = []
+            for r in cur.fetchall():
+                notas.append({
+                    'id': r['id'],
+                    'data': str(r['data_vencimento']) if r['data_vencimento'] else '',
+                    'id_cliente': r['id_representante'],
+                    'nome_cliente': r['nome_cliente'] or '',
+                    'valor_total': round(float(r['valor_total'] or 0), 2),
+                    'id_nota_venda_origem': r['id_nota_venda_origem'],
+                })
+        return notas
+    return _safe(_real, [])
+
+
+def get_itens_nota(id_nota):
+    """Retorna os itens (produtos, quantidades, valores) de uma nota específica."""
+    def _real():
+        from br.com.pdv.src.BDD.bancodb import BancoDB
+        with BancoDB.obter_conexao() as conn:
+            cur = conn.cursor()
+            cur.execute('''
+                SELECT
+                    fe.id_produto,
+                    p.nome AS nome_produto,
+                    um.descricao AS unidade,
+                    SUM(fe.quantidade) AS quantidade,
+                    AVG(fe.valorUnidario) AS valor_unitario
+                FROM fluxoEstoque fe
+                JOIN produto p ON p.id = fe.id_produto
+                LEFT JOIN unidadeMedida um ON um.id = p.unidadeMedida
+                WHERE fe.id_fluxo_nota = ?
+                GROUP BY fe.id_produto
+            ''', (id_nota,))
+            itens = []
+            for r in cur.fetchall():
+                itens.append({
+                    'id': r['id_produto'],
+                    'nome': r['nome_produto'],
+                    'unidade': r['unidade'] or 'un',
+                    'quantidade': abs(float(r['quantidade'] or 0)),
+                    'valor_unitario': round(float(r['valor_unitario'] or 0), 4),
+                })
+        return itens
+    return _safe(_real, [])
+
+
 def pdv_context():
     entidades = get_entidades_detalhadas()
     clientes = [e for e in entidades if e.get("is_cliente")] or DEMO_CLIENTES
@@ -391,4 +655,6 @@ def pdv_context():
         "clientes": clientes,
         "formas_pagamento": get_formas_pagamento(),
         "catalogo": get_produtos_catalogo(),
+        "notas_venda": get_notas_venda(),
+        "notas_devolucao": get_notas_devolucao(),
     }

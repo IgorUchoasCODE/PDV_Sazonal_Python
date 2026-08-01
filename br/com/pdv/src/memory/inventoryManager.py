@@ -207,11 +207,12 @@ class InventoryManager:
             }
             return idx
 
-        def _consumir_fifo(id_produto_str, qtd_necessaria) -> list:
+        def _consumir_fifo(id_produto_str, qtd_necessaria, dados_nota=None) -> list:
             """
             Consome qtd_necessaria de estoque do produto no modo FIFO.
             Retorna lista de (idx_lote, qtd_consumida) para rastreabilidade.
             Atualiza qtd_disponivel em cada lote consumido.
+            Registra a venda no lote para rastreamento.
             """
             mapa = cls._mapaProdutos.get(id_produto_str, {})
             lotes_fifo = mapa.get("lotes", [])
@@ -225,6 +226,17 @@ class InventoryManager:
                     continue
                 consumivel = min(lote["qtd_disponivel"], restante)
                 lote["qtd_disponivel"] -= consumivel
+                
+                # Rastrear a venda neste lote
+                if dados_nota:
+                    if "vendas" not in lote:
+                        lote["vendas"] = []
+                    lote["vendas"].append({
+                        "id_nota_venda": dados_nota.get("id"),
+                        "data_venda": dados_nota.get("dataEmissao") or dados_nota.get("data", str(date.today())),
+                        "qtd_abatida": consumivel
+                    })
+                
                 if lote["qtd_disponivel"] <= 0:
                     lote["consumido"] = True
                     lotes_fifo.remove(idx_lote)
@@ -293,12 +305,12 @@ class InventoryManager:
                             id_ingr_str = str(id_ingr)
                             mapa_ingr = _garantir_produto(id_ingr_str)
                             qtd_consumida = qtd_mov * qtd_ingr
-                            _consumir_fifo(id_ingr_str, qtd_consumida)
+                            _consumir_fifo(id_ingr_str, qtd_consumida, dados_nota=dados)
                             mapa_ingr["quantidadeTotal"] -= qtd_consumida
                             mapa_ingr["valorTotalEstoque"] -= qtd_consumida * mapa_ingr["custoMedio"]
                             mapa_ingr["totalVendas"] += qtd_consumida
                     else:
-                        _consumir_fifo(id_produto_str, qtd_mov)
+                        _consumir_fifo(id_produto_str, qtd_mov, dados_nota=dados)
                         mapa["quantidadeTotal"] -= qtd_mov
                         mapa["valorTotalEstoque"] -= qtd_mov * mapa["custoMedio"]
                         mapa["totalVendas"] += qtd_mov
@@ -437,13 +449,16 @@ class InventoryManager:
             from br.com.pdv.src.memory.supplierClassFactory import SupplierClassFactory
             from br.com.pdv.src.memory.productClassFactory import ProductClassFactory
 
-            id_forn = dados.get("id_fornecedor")
+            id_forn = dados.get("fornecedor_id") or dados.get("id_fornecedor")
             if not id_forn:
-                raise ValueError("'id_fornecedor' é obrigatório.")
+                raise ValueError("'fornecedor_id' é obrigatório.")
 
             lista_produtos = dados.get("produtos")
             if not lista_produtos:
                 raise ValueError("'produtos' é obrigatório e não pode estar vazio.")
+                
+            desconto_tipo = dados.get("desconto_tipo", "R$")
+            desconto_valor = float(dados.get("desconto_valor") or 0)
 
             fornecedor = SupplierClassFactory.fabricar(id_forn)
             if not fornecedor:
@@ -458,13 +473,18 @@ class InventoryManager:
                 raise ValueError("Falha ao inserir o cabeçalho da nota de compra no banco.")
 
             notaCompra = NotaCompra(id=id_nota, fornecedor=fornecedor, dataEmissao=data_emissao, dataVencimento=data_venc)
+            
+            subtotal = 0.0
 
             for item in lista_produtos:
                 id_prod = item.get("id")
-                qtd = item.get("quantidade")
-                val_unit = item.get("valorUnidario")
+                qtd = item.get("qtd") or item.get("quantidade")
+                val_unit = item.get("custo_unit") or item.get("valorUnidario")
+                
                 if not all([id_prod, qtd is not None, val_unit is not None]):
                     raise ValueError(f"Item inválido em 'produtos': {item}")
+                    
+                subtotal += (float(qtd) * float(val_unit))
 
                 produto = ProductClassFactory.testar_e_fabricar(id_prod)
                 if not produto:
@@ -484,11 +504,28 @@ class InventoryManager:
                     str(data_emissao)
                 )
 
+            # Aplica Desconto
+            if desconto_valor > 0:
+                if desconto_tipo == '%':
+                    valor_desconto_real = subtotal * (desconto_valor / 100.0)
+                else:
+                    valor_desconto_real = desconto_valor
+                notaCompra.aplicarDesconto(valor_desconto_real)
+
+            notaCompra.salvar()
+
             notaCompra.salvar()
             cls._NotasCompras.add(notaCompra)
 
             # Atualiza os índices em memória sem recarregar tudo
             cls._atualizar_mapa_com_nota(notaCompra, id_tipo=1)
+
+            # Snapshot sazonal automático para compra
+            try:
+                from br.com.pdv.src.apis.gerenciadorSazonal import GerenciadorSazonal
+                GerenciadorSazonal.salvar_snapshot_sazonal(id_nota)
+            except Exception as e_saz:
+                print(f"[InventoryManager] Aviso: snapshot sazonal (compra) falhou: {e_saz}")
 
             print(f"[InventoryManager] Nota de Compra ID {id_nota} registrada com sucesso.")
             return notaCompra
@@ -534,12 +571,17 @@ class InventoryManager:
             data_emissao = cls._parse_data(dados.get("data")) or date.today()
             data_venc = cls._parse_data(dados.get("data_vencimento"))
 
-            # Salva cabeçalho no banco (tipo 2 = VENDA)
-            id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(2, id_cli, str(data_venc or data_emissao))
+            # Extração de desconto e acrescimo
+            desconto = float(dados.get("desconto", 0))
+            acrescimo = float(dados.get("acrescimo", 0))
+
+            # Salva cabeçalho no banco (tipo 2 = VENDA) com desconto e acrescimo
+            id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(2, id_cli, str(data_venc or data_emissao), desconto, acrescimo)
             if not id_nota or id_nota <= 0:
                 raise ValueError("Falha ao inserir o cabeçalho da nota de venda no banco.")
 
             notaVenda = NotaVenda(id=id_nota, clienteFornecedor=cliente, dataEmissao=data_emissao, dataVencimento=data_venc)
+            notaVenda.setDescontoAcrescimo(desconto, acrescimo)
 
             for item in lista_produtos:
                 id_prod = item.get("id")
@@ -594,21 +636,42 @@ class InventoryManager:
                     venda_total_comp = val_venda * qtd
 
                     # Persiste no banco cada ingrediente/lote com seu lucro real exato
+                    # Distribuição CORRETA: proporcional ao CUSTO de cada ingrediente no custo total
+                    # parcela_venda_ingr = (custo_ingr / custo_total) * venda_total
+                    # parcela_venda_lote = (custo_lote  / custo_ingr) * parcela_venda_ingr
                     mapa_origem: dict = {}
                     for id_ingr, rastro_ingr, qtd_ingr_total, custo_real_ingr in itens_rastro:
+                        # Parcela de venda proporcional ao custo deste ingrediente no custo total do composto
+                        if custo_total_real_comp > 0:
+                            parcela_venda_ingr = (custo_real_ingr / custo_total_real_comp) * venda_total_comp
+                        else:
+                            # Custo zero: distribui igualmente entre ingredientes
+                            parcela_venda_ingr = venda_total_comp / len(itens_rastro)
+
                         if rastro_ingr:
                             mapa_origem[id_ingr] = int(rastro_ingr[0][0].split(".")[1])
-                            total_qtd_rastro = sum(q for _, q in rastro_ingr)
+                            total_custo_rastro = 0.0
+                            for idx_lote, qtd_consumida in rastro_ingr:
+                                lote = cls._mapaEstoque.get(idx_lote)
+                                c_unit_lote = lote["custo_unitario"] if lote else cls._get_custo_medio(str(id_ingr))
+                                total_custo_rastro += c_unit_lote * qtd_consumida
+
                             for idx_lote, qtd_consumida in rastro_ingr:
                                 id_nota_orig_lote = int(idx_lote.split(".")[1])
                                 lote = cls._mapaEstoque.get(idx_lote)
                                 c_unit_lote = lote["custo_unitario"] if lote else cls._get_custo_medio(str(id_ingr))
                                 custo_lote = c_unit_lote * qtd_consumida
 
-                                # Distribuição 100% genérica proporcional à quantidade física consumida de cada lote
-                                parcela_venda_lote = (qtd_consumida / total_qtd_rastro) * venda_total_comp if total_qtd_rastro > 0 else 0
+                                # Parcela deste lote ∝ custo do lote / custo total do ingrediente
+                                if total_custo_rastro > 0:
+                                    parcela_venda_lote = (custo_lote / total_custo_rastro) * parcela_venda_ingr
+                                elif qtd_ingr_total > 0:
+                                    parcela_venda_lote = (qtd_consumida / qtd_ingr_total) * parcela_venda_ingr
+                                else:
+                                    parcela_venda_lote = 0.0
+
                                 lucro_frac = round(parcela_venda_lote - custo_lote, 4)
-                                val_venda_banco = round(parcela_venda_lote / qtd_consumida, 4) if qtd_consumida > 0 else 0
+                                val_venda_banco = round(parcela_venda_lote / qtd_consumida, 4) if qtd_consumida > 0 else 0.0
 
                                 DB.INSERT.FLUXO_ESTOQUE.executar(
                                     id_nota_orig_lote,      # id_notaOrigem = nota de compra do lote real
@@ -617,15 +680,19 @@ class InventoryManager:
                                     str(data_emissao)
                                 )
                         else:
-                            # Sem lote rastreável
+                            # Sem lote rastreável: usa parcela proporcional ao custo
                             id_orig_valido = cls._obter_id_nota_origem_valido(None, id_nota, int(id_ingr), 2)
-                            lucro_frac = round((1.0 / len(receita)) * val_total_lucro, 4) if receita else 0
+                            custo_ingr_unit = cls._get_custo_medio(str(id_ingr))
+                            custo_ingr_total_sem_lote = custo_ingr_unit * qtd_ingr_total
+                            lucro_frac = round(parcela_venda_ingr - custo_ingr_total_sem_lote, 4)
+                            val_venda_banco_sem_lote = round(parcela_venda_ingr / qtd_ingr_total, 4) if qtd_ingr_total > 0 else 0.0
                             DB.INSERT.FLUXO_ESTOQUE.executar(
                                 id_orig_valido,
                                 id_nota, 2, int(id_ingr),
-                                qtd_ingr_total, val_venda, lucro_frac,
+                                qtd_ingr_total, val_venda_banco_sem_lote, lucro_frac,
                                 str(data_emissao)
                             )
+
 
                     notaVenda.adicionarProduto(produto, id_nota_origem=mapa_origem or None)
 
@@ -813,7 +880,7 @@ class InventoryManager:
                         id_nota, 4, id_prod, qtd, val_unit, valor_abatido_lucro, str(data_emissao)
                     )
                 else:
-                    # Perda em Estoque: Consome lotes FIFO ativos em estoque e grava fatia por lote
+                    # Perda em Estoque: Consome lotes por proximidade de data e NÃO referencia o ID da compra
                     if receita and isinstance(receita, dict):
                         for id_ingr, qtd_por_un in receita.items():
                             qtd_por_un = float(qtd_por_un)
@@ -822,13 +889,13 @@ class InventoryManager:
                                 qtd_por_un = prod_ingr.normalizarQuantidade(qtd_por_un)
 
                             qtd_perd_ingr = qtd * qtd_por_un
-                            rastro_ingr = cls._consumir_fifo_interno(str(id_ingr), qtd_perd_ingr)
+                            rastro_ingr = cls._consumir_por_proximidade_data(str(id_ingr), qtd_perd_ingr, data_emissao)
 
                             if rastro_ingr:
                                 for idx_lote, qtd_lote in rastro_ingr:
                                     lote_data = cls._mapaEstoque.get(idx_lote, {})
                                     c_lote = lote_data.get("custo_unitario") or cls._get_custo_medio(str(id_ingr))
-                                    id_compra_lote = lote_data.get("id_nota") or cls._obter_id_nota_origem_valido(None, id_nota, int(id_ingr), 5)
+                                    id_compra_lote = int(idx_lote.split(".")[1]) if "." in idx_lote else id_nota
                                     valor_abatido_lucro = round(c_lote * qtd_lote, 4)
 
                                     ingr = ProductClassFactory.testar_e_fabricar(id_ingr)
@@ -836,12 +903,12 @@ class InventoryManager:
                                     notaPerda.adicionarProduto(ingr)
 
                                     DB.INSERT.FLUXO_ESTOQUE.executar(
-                                        id_compra_lote,  # id_notaOrigem = Nota de Compra do Lote Perdiddo
+                                        id_compra_lote,
                                         id_nota, 4, int(id_ingr), qtd_lote, c_lote, valor_abatido_lucro, str(data_emissao)
                                     )
                             else:
                                 c_fallback = cls._get_custo_medio(str(id_ingr))
-                                id_orig_f = cls._obter_id_nota_origem_valido(None, id_nota, int(id_ingr), 5)
+                                id_orig_f = id_nota_orig if id_nota_orig else id_nota
                                 valor_abatido_lucro = round(c_fallback * qtd_perd_ingr, 4)
                                 ingr = ProductClassFactory.testar_e_fabricar(id_ingr)
                                 ingr.insertPropertValue(valorUnidario=c_fallback, quantidade=qtd_perd_ingr)
@@ -850,24 +917,24 @@ class InventoryManager:
                                     id_orig_f, id_nota, 4, int(id_ingr), qtd_perd_ingr, c_fallback, valor_abatido_lucro, str(data_emissao)
                                 )
                     else:
-                        rastro_prod = cls._consumir_fifo_interno(str(id_prod), qtd)
+                        rastro_prod = cls._consumir_por_proximidade_data(str(id_prod), qtd, data_emissao)
                         if rastro_prod:
                             for idx_lote, qtd_lote in rastro_prod:
                                 lote_data = cls._mapaEstoque.get(idx_lote, {})
                                 c_lote = lote_data.get("custo_unitario") or cls._get_custo_medio(str(id_prod))
-                                id_compra_lote = lote_data.get("id_nota") or cls._obter_id_nota_origem_valido(None, id_nota, id_prod, 5)
+                                id_compra_lote = int(idx_lote.split(".")[1]) if "." in idx_lote else id_nota
                                 valor_abatido_lucro = round(c_lote * qtd_lote, 4)
 
                                 produto.insertPropertValue(valorUnidario=c_lote, quantidade=qtd_lote)
                                 notaPerda.adicionarProduto(produto)
 
                                 DB.INSERT.FLUXO_ESTOQUE.executar(
-                                    id_compra_lote,  # id_notaOrigem = Nota de Compra do Lote Perdiddo
+                                    id_compra_lote,
                                     id_nota, 4, id_prod, qtd_lote, c_lote, valor_abatido_lucro, str(data_emissao)
                                 )
                         else:
                             c_fallback = cls._get_custo_medio(str(id_prod))
-                            id_orig_f = cls._obter_id_nota_origem_valido(None, id_nota, id_prod, 5)
+                            id_orig_f = id_nota_orig if id_nota_orig else id_nota
                             valor_abatido_lucro = round(c_fallback * qtd, 4)
                             produto.insertPropertValue(valorUnidario=c_fallback, quantidade=qtd)
                             notaPerda.adicionarProduto(produto)
@@ -1068,7 +1135,7 @@ class InventoryManager:
         try:
             from br.com.pdv.src.memory.productClassFactory import ProductClassFactory
 
-            id_rep = dados.get("id_representante") or 1
+            id_rep = dados.get("fornecedor_id") or dados.get("id_representante") or 1
             id_perda_orig = dados.get("id_nota_perda_origem")
             lista_produtos = dados.get("produtos")
             if not lista_produtos:
@@ -1105,11 +1172,11 @@ class InventoryManager:
 
             for item in lista_produtos:
                 id_prod = item.get("id")
-                qtd = item.get("quantidade")
-                if not id_prod or qtd is None or qtd <= 0:
+                qtd = item.get("qtd") or item.get("quantidade")
+                if not id_prod or qtd is None or float(qtd) <= 0:
                     raise ValueError(f"Item inválido em 'produtos': {item}")
 
-                val_unit = item.get("valorUnidario")
+                val_unit = item.get("custo_unit") or item.get("valorUnidario")
                 if not val_unit:
                     # Busca valoração do produto perdido na Nota de Perda de Origem
                     try:
@@ -1683,8 +1750,32 @@ class InventoryManager:
 
     @classmethod
     def _get_custo_medio(cls, id_produto_str: str) -> float:
-        """Retorna o custo médio atual do produto no mapa."""
-        return cls._mapaProdutos.get(id_produto_str, {}).get("custoMedio", 0.0)
+        """Retorna o custo médio atual do produto no mapa em memória.
+        Se não disponível, busca diretamente no banco (fallback robusto)."""
+        custo = cls._mapaProdutos.get(id_produto_str, {}).get("custoMedio", 0.0)
+        if custo and custo > 0:
+            return custo
+        return cls._get_custo_medio_db(id_produto_str)
+
+    @classmethod
+    def _get_custo_medio_db(cls, id_produto_str: str) -> float:
+        """Retorna o custo médio de compra do produto consultando o banco diretamente.
+        Usa a média ponderada dos fluxoEstoque de tipo COMPRA (id_tipoNota=1) e REPOSIÇÃO (id_tipoNota=5)."""
+        try:
+            from br.com.pdv.src.BDD.bancodb import BancoDB
+            with BancoDB.obter_conexao() as conn:
+                row = conn.execute(
+                    """SELECT SUM(quantidade * valorUnidario) / SUM(quantidade) as custo_medio_pond
+                       FROM fluxoEstoque
+                       WHERE id_produto = ? AND id_tipoNota IN (1, 5)
+                         AND quantidade > 0 AND valorUnidario > 0""",
+                    (int(id_produto_str),)
+                ).fetchone()
+                if row and row["custo_medio_pond"] is not None:
+                    return float(row["custo_medio_pond"])
+        except Exception:
+            pass
+        return 0.0
 
     @classmethod
     def _consumir_fifo_interno(cls, id_produto_str: str, qtd_necessaria: float) -> list:
@@ -1707,6 +1798,58 @@ class InventoryManager:
             if lote["qtd_disponivel"] <= 0:
                 lote["consumido"] = True
                 lotes_fifo.remove(idx_lote)
+            restante -= consumivel
+            rastro.append((idx_lote, consumivel))
+        return rastro
+
+    @classmethod
+    def _consumir_por_proximidade_data(cls, id_produto_str: str, qtd_necessaria: float, data_referencia) -> list:
+        """
+        Consome qtd_necessaria de lotes priorizando os que têm a data mais próxima da data_referencia.
+        Isso garante que perdas sejam referentes aos períodos corretos em atividade, e não necessariamente o mais antigo (FIFO).
+        """
+        from datetime import date, datetime
+        mapa = cls._mapaProdutos.get(id_produto_str, {})
+        lotes = mapa.get("lotes", [])
+        
+        def date_diff(idx):
+            lote = cls._mapaEstoque.get(idx)
+            if not lote: return 999999
+            d_lote = lote.get("data_entrada") or lote.get("data")
+            if isinstance(d_lote, str):
+                try: d_lote = datetime.strptime(d_lote, "%Y-%m-%d").date()
+                except: d_lote = date.min
+            elif isinstance(d_lote, datetime):
+                d_lote = d_lote.date()
+            if not isinstance(d_lote, date):
+                d_lote = date.min
+            
+            if isinstance(data_referencia, str):
+                try: d_ref = datetime.strptime(data_referencia, "%Y-%m-%d").date()
+                except: d_ref = date.today()
+            elif isinstance(data_referencia, datetime):
+                d_ref = data_referencia.date()
+            elif isinstance(data_referencia, date):
+                d_ref = data_referencia
+            else:
+                d_ref = date.today()
+                
+            return abs((d_ref - d_lote).days)
+            
+        lotes_ordenados = sorted([l for l in lotes if cls._mapaEstoque.get(l, {}).get("qtd_disponivel", 0) > 0], key=date_diff)
+        
+        rastro = []
+        restante = qtd_necessaria
+        for idx_lote in lotes_ordenados:
+            if restante <= 0:
+                break
+            lote = cls._mapaEstoque.get(idx_lote)
+            consumivel = min(lote["qtd_disponivel"], restante)
+            lote["qtd_disponivel"] -= consumivel
+            if lote["qtd_disponivel"] <= 0:
+                lote["consumido"] = True
+                if idx_lote in lotes:
+                    lotes.remove(idx_lote)
             restante -= consumivel
             rastro.append((idx_lote, consumivel))
         return rastro

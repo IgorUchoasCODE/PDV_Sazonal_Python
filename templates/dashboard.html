@@ -92,15 +92,15 @@
         <span style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Atalhos Sazonais:</span>
         
         <button class="shortcut-btn" data-shortcut-month="{{ mes_pico_faturamento }}" style="background: rgba(16, 185, 129, 0.12); color: #065f46; border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            🟢 Pico de Faturamento (Março)
+            🟢 Pico de Faturamento ({{ mes_pico_label|default:"N/A" }})
         </button>
 
         <button class="shortcut-btn" data-shortcut-month="{{ mes_baixa_faturamento }}" style="background: rgba(245, 158, 11, 0.12); color: #92400e; border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            🟡 Baixa no Faturamento (Julho)
+            🟡 Baixa no Faturamento ({{ mes_baixa_label|default:"N/A" }})
         </button>
 
         <button class="shortcut-btn" data-shortcut-month="{{ mes_maior_perda }}" style="background: rgba(239, 68, 68, 0.12); color: #991b1b; border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            🚨 Maior Perda de Estoque (Junho)
+            🚨 Maior Perda de Estoque ({{ mes_maior_perda_label|default:"N/A" }})
         </button>
 
         <button class="shortcut-btn" data-shortcut-river="CHEIA" style="background: rgba(14, 165, 233, 0.12); color: #0369a1; border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
@@ -252,6 +252,7 @@
             });
             const dataVendas = data.map(d => d.valor_venda);
             const dataLucro = data.map(d => d.lucro_venda);
+            const dataPerdas = data.map(d => d.valor_perda);
             const dataRio = data.map(d => d.nivel_rio);
             const dataTemp = data.map(d => d.temperatura);
         
@@ -337,6 +338,18 @@
                 currentChart.destroy();
             }
 
+            // Lógica para redução dinâmica (ignorar outliers enormes)
+            const allFinValues = [...dataVendas, ...dataLucro, ...dataPerdas].filter(v => typeof v === 'number');
+            allFinValues.sort((a, b) => a - b);
+            let dynamicMax = undefined;
+            if (allFinValues.length > 5) {
+                const p95 = allFinValues[Math.floor(allFinValues.length * 0.95)];
+                const maxVal = allFinValues[allFinValues.length - 1];
+                if (maxVal > p95 * 3 && p95 > 0) {
+                    dynamicMax = p95 * 1.5; // Capa o eixo Y se o máximo for 3x maior que o percentil 95
+                }
+            }
+
             currentChart = new Chart(ctx, {
                 type: 'line',
                 plugins: [weatherBgPlugin],
@@ -352,7 +365,7 @@
                             borderColor: 'transparent',
                             pointRadius: 0,
                             tension: 0.4,
-                            order: 3 // Fica atrás
+                            order: 3
                         },
                         {
                             label: 'Faturamento de Vendas (R$)',
@@ -379,6 +392,17 @@
                             pointRadius: 3,
                             tension: 0.3,
                             order: 1
+                        },
+                        {
+                            label: 'Perdas de Estoque',
+                            data: dataPerdas,
+                            borderColor: '#ef4444',
+                            backgroundColor: 'transparent',
+                            borderWidth: 2,
+                            fill: false,
+                            yAxisID: 'yFin',
+                            tension: 0.3,
+                            order: 0
                         }
                     ]
                 },
@@ -398,7 +422,8 @@
                             display: true,
                             position: 'left',
                             title: { display: true, text: 'Valores Financeiros (R$)' },
-                            grid: { borderDash: [2, 4] }
+                            grid: { borderDash: [2, 4] },
+                            max: dynamicMax
                         },
                         yRio: {
                             type: 'linear',

@@ -478,7 +478,7 @@ img, svg { display: block; }
 
 .content-body {
   padding: 1.75rem;
-  max-width: 1400px;
+  max-width: 1800px;
   width: 100%;
   margin: 0 auto;
 }
@@ -691,32 +691,82 @@ img, svg { display: block; }
    BOTÕES
    ========================================================================== */
 
+@keyframes ripple-wave {
+  0%   { transform: scale(0); opacity: .6; }
+  80%  { transform: scale(2.8); opacity: .1; }
+  100% { transform: scale(3.2); opacity: 0; }
+}
+
+@keyframes btn-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(.93); }
+  70%  { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
 .btn {
+  position: relative;
+  overflow: hidden;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: .45rem;
-  padding: .68rem 1.15rem;
+  padding: .75rem 1.3rem;
   border-radius: var(--radius-sm);
   border: none;
   font-weight: 700;
-  font-size: .87rem;
-  transition: transform .1s ease, filter .12s ease, box-shadow .12s ease;
+  font-size: .9rem;
+  letter-spacing: .02em;
+  cursor: pointer;
+  transition: transform .15s cubic-bezier(.34,1.56,.64,1),
+              filter .15s ease,
+              box-shadow .15s ease;
 }
 
-.btn:hover { filter: brightness(1.05); transform: translateY(-1px); }
-.btn:active { transform: translateY(0); }
+.btn::after {
+  content: '';
+  position: absolute;
+  inset: 50% 50%;
+  border-radius: 50%;
+  background: rgba(255,255,255,.45);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.btn.rippling::after {
+  animation: ripple-wave .55s ease-out forwards;
+}
+
+.btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0,0,0,.18);
+}
+
+.btn:active {
+  animation: btn-pop .25s ease;
+  transform: translateY(0) scale(.96);
+  filter: brightness(.97);
+}
 
 .btn-red, .btn-primary {
   background: linear-gradient(135deg, var(--brand-red-main), var(--brand-red-dark));
   color: #fff;
-  box-shadow: 0 8px 18px rgba(217, 4, 41, .25);
+  box-shadow: 0 8px 20px rgba(217, 4, 41, .30);
+}
+
+.btn-red:hover, .btn-primary:hover {
+  box-shadow: 0 14px 30px rgba(217, 4, 41, .38);
 }
 
 .btn-emerald {
   background: linear-gradient(135deg, #10b981, #047857);
   color: #fff;
-  box-shadow: 0 8px 18px rgba(16, 185, 129, .25);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, .30);
+}
+
+.btn-emerald:hover {
+  box-shadow: 0 14px 30px rgba(16, 185, 129, .40);
 }
 
 .btn-secondary {

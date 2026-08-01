@@ -4,143 +4,660 @@
 {% block page_title %}Gestão de Fornecedores, Histórico de Notas e Saldo A Pagar{% endblock %}
 
 {% block content %}
-<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
-    <!-- Cadastro de Fornecedor / Vínculo Pessoa-Empresa -->
-    <div class="metric-card">
-        <h3 style="margin-bottom: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem;">
-            🚚 Cadastrar Fornecedor & Vínculo de Representante
-        </h3>
-
-        <form id="form-fornecedor" onsubmit="cadastrarFornecedor(event)">
-            <div style="margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Tipo de Cadastro:</label>
-                <select id="forn-tipo" class="form-control" onchange="toggleFornCampos()" required>
-                    <option value="EMPRESA">Empresa / Pessoa Jurídica (CNPJ)</option>
-                    <option value="PESSOA">Pessoa Física (CPF)</option>
-                    <option value="VINCULO">Vínculo Pessoa + Empresa (Representante com Cargo)</option>
-                </select>
-            </div>
-
-            <div id="campo-forn-empresa" style="margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Razão Social / Nome da Empresa:</label>
-                <input type="text" id="forn-nome-empresa" class="input-field" placeholder="Ex: Distribuidora AmBev S/A">
-            </div>
-
-            <div id="campo-forn-pessoa" style="margin-bottom: 1rem; display: none;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Nome do Representante / Fornecedor:</label>
-                <input type="text" id="forn-nome-pessoa" class="input-field" placeholder="Ex: Carlos Fornecedor Local">
-            </div>
-
-            <div style="margin-bottom: 1.25rem;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Telefone / WhatsApp Contato:</label>
-                <input type="text" id="forn-telefone" class="input-field" placeholder="(92) 99999-0000">
-            </div>
-
-            <button type="submit" class="btn btn-primary" style="width: 100%;">
-                🚚 Salvar Fornecedor no Sistema
-            </button>
-        </form>
-    </div>
-
-    <!-- Tabela de Fornecedores com Histórico de Notas e Saldo -->
-    <div class="metric-card">
-        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">📋 Fornecedores & Saldo Pendente (Contas a Pagar)</h3>
-        
-        <div class="table-container" style="max-height: 500px; overflow-y: auto;">
-            <table class="table-custom">
-                <thead>
-                    <tr>
-                        <th>Entidade ID</th>
-                        <th>Fornecedor</th>
-                        <th>Tipo</th>
-                        <th>Total Compras</th>
-                        <th>Pago</th>
-                        <th>Saldo A Pagar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for f in fornecedores %}
-                    <tr>
-                        <td>#{{ f.id_entidade }}</td>
-                        <td>
-                            <strong>{{ f.empresa_nome|default:f.pessoa_nome }}</strong>
-                            {% if f.pessoa_nome and f.empresa_nome %}
-                            <div style="font-size: 0.75rem; color: #64748b;">Representante: {{ f.pessoa_nome }}</div>
+<div class="metric-card">
+    <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">📋 Rastreamento de Fornecedores & Saldo a Pagar</h3>
+    
+    <div style="background: white; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+        {% for fornecedor in arvore_fornecedores %}
+        <details class="tree-node" style="border-bottom: 1px solid #e2e8f0;">
+            <summary class="hover-scale" style="padding: 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; transition: background 0.2s;">
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <div style="font-size: 1.1rem; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 1rem;">
+                        <span>🏢 {{ fornecedor.nome }} <span style="font-size: 0.85rem; color: #64748b; font-weight: normal;">(#{{ fornecedor.id }})</span></span>
+                        <div style="display: flex; gap: 0.5rem;" onclick="event.preventDefault(); event.stopPropagation();">
+                            <button onclick="abrirNovaCompra({{ fornecedor.id }}, '{{ fornecedor.nome|escapejs }}')" style="background: var(--brand-blue); color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600;">+ Nova Compra</button>
+                            <button onclick="{% if fornecedor.tem_perdas %}abrirReposicao({{ fornecedor.id }}, '{{ fornecedor.nome|escapejs }}'){% else %}alert('Este fornecedor não possui perdas registradas.'){% endif %}" style="background: {% if fornecedor.tem_perdas %}#10b981{% else %}#94a3b8{% endif %}; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; cursor: {% if fornecedor.tem_perdas %}pointer{% else %}not-allowed{% endif %}; font-weight: 600;" {% if not fornecedor.tem_perdas %}title="Apenas disponível se houver perdas registradas com este fornecedor"{% endif %}>+ Reposição</button>
+                        </div>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 1.5rem; align-items: center;">
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.75rem; color: #64748b;">Valor Total Comprado</div>
+                        <div style="font-size: 0.95rem; font-weight: 600; color: var(--brand-blue);">R$ {{ fornecedor.resumo.total_compras|floatformat:2 }}</div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.75rem; color: #64748b;">Valor Pago</div>
+                        <div style="font-size: 0.95rem; font-weight: 600; color: #10b981;">R$ {{ fornecedor.resumo.pagamentos_efetuados|floatformat:2 }}</div>
+                    </div>
+                    <div style="text-align: right; background: #fff1f2; padding: 0.4rem 0.8rem; border-radius: 6px; border: 1px solid #ffe4e6;">
+                        <div style="font-size: 0.75rem; color: #9f1239; font-weight: 700;">Saldo A Pagar</div>
+                        <div style="font-size: 1.1rem; font-weight: 800; color: #e11d48;">R$ {{ fornecedor.resumo.contas_a_pagar|floatformat:2 }}</div>
+                    </div>
+                </div>
+            </summary>
+            
+            <!-- Filhos: Notas de Compra -->
+            <div style="padding: 1rem 1rem 1rem 2rem; border-left: 2px dashed #cbd5e1; margin-left: 1rem; display: flex; flex-direction: column; gap: 0.75rem; background: #fff;">
+                {% if fornecedor.compras %}
+                    {% for compra in fornecedor.compras %}
+                    <details class="tree-node" style="border: 1px solid #e2e8f0; border-radius: 6px; background: #f8fafc;">
+                        <summary class="hover-scale" style="padding: 0.75rem 1rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <span style="font-size: 0.95rem; font-weight: 700; color: var(--brand-blue);">📘 Nota de Compra #{{ compra.id_nota }}</span>
+                                <span style="font-size: 0.8rem; color: #64748b; margin-left: 8px;">Vencimento: {{ compra.data_vencimento }}</span>
+                            </div>
+                            <div style="text-align: right; display: flex; align-items: center; gap: 1rem;">
+                                <div>
+                                    <div style="font-size: 0.75rem; color: #64748b; font-weight: normal; margin-bottom: 2px;">Valor da Nota</div>
+                                    <div style="font-size: 0.95rem; font-weight: 700; color: var(--brand-blue);">
+                                        R$ {{ compra.total_nota|floatformat:2 }}
+                                    </div>
+                                </div>
+                                <button onclick="event.preventDefault(); event.stopPropagation(); abrirModalPagarNota({{ compra.id_nota }}, '{{ compra.total_nota|stringformat:'f' }}')" style="background: #10b981; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; font-size: 0.75rem; cursor: pointer; font-weight: 600;">Efetuar Pagamento</button>
+                            </div>
+                        </summary>
+                        
+                        <!-- Filhos da Compra: Pagamentos e Flutuações -->
+                        <div style="padding: 1rem; border-top: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 0.5rem; background: white;">
+                            {% if compra.pagamentos or compra.flutuacoes %}
+                                <!-- Pagamentos -->
+                                {% for pag in compra.pagamentos %}
+                                <div class="hover-scale" onclick="abrirModalPagamento({{ pag.id_pagamento }})" style="display: flex; justify-content: space-between; padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px; cursor: pointer;">
+                                    <div>
+                                        <span style="font-size: 0.85rem; font-weight: 600; color: #065f46;">💵 Pagamento Efetuado</span>
+                                        <span style="font-size: 0.8rem; color: #64748b; margin-left: 8px;">Data: {{ pag.data_pagamento|slice:":10" }}</span>
+                                    </div>
+                                    <div style="font-size: 0.85rem; font-weight: 700; color: #059669;">
+                                        R$ {{ pag.valor|floatformat:2 }}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                                
+                                <!-- Flutuações -->
+                                {% for flut in compra.flutuacoes %}
+                                    {% if flut.id_tipoNota == 4 or flut.id_tipoNota == 5 %} <!-- Perda -->
+                                    <details class="hover-scale" style="background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 6px; margin-bottom: 0.5rem;">
+                                        <summary style="display: flex; justify-content: space-between; padding: 0.5rem 1rem; cursor: pointer; list-style: none;">
+                                            <div>
+                                                <span style="font-size: 0.85rem; font-weight: 600; color: #991b1b;">
+                                                    ⚠️ {% if flut.id_tipoNota == 4 %}Perda Pós-Devolução{% else %}Perda de Estoque{% endif %} #{{ flut.id_nota }}
+                                                </span>
+                                                <span style="font-size: 0.8rem; color: #64748b; margin-left: 8px;">Data: {{ flut.data }}</span>
+                                            </div>
+                                            <div style="font-size: 0.85rem; font-weight: 700; color: #dc2626;">
+                                                -{{ flut.quantidade|floatformat:2 }} cx (R$ {{ flut.valor|floatformat:2 }})
+                                            </div>
+                                        </summary>
+                                        <div style="padding: 0.5rem 1rem; border-top: 1px solid rgba(239, 68, 68, 0.1); font-size: 0.8rem; color: #475569;">
+                                            <p style="margin: 0.2rem 0;"><strong>Produto Perdido:</strong> {{ flut.produto_nome|default:"Desconhecido" }}</p>
+                                            <p style="margin: 0.2rem 0;"><strong>Nota de Origem:</strong> #{{ flut.nota_origem }} (Data: {{ flut.data_origem|default:"N/A" }})</p>
+                                        </div>
+                                    </details>
+                                    {% elif flut.id_tipoNota == 3 %} <!-- Devolução -->
+                                    <details class="hover-scale" style="background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.2); border-radius: 6px; margin-bottom: 0.5rem;">
+                                        <summary style="display: flex; justify-content: space-between; padding: 0.5rem 1rem; cursor: pointer; list-style: none;">
+                                            <div>
+                                                <span style="font-size: 0.85rem; font-weight: 600; color: #b45309;">🔄 Devolução Associada #{{ flut.id_nota }}</span>
+                                                <span style="font-size: 0.8rem; color: #64748b; margin-left: 8px;">Data: {{ flut.data }}</span>
+                                            </div>
+                                            <div style="font-size: 0.85rem; font-weight: 700; color: #d97706;">
+                                                -{{ flut.quantidade|floatformat:2 }} cx (R$ {{ flut.valor|floatformat:2 }})
+                                            </div>
+                                        </summary>
+                                        <div style="padding: 0.5rem 1rem; border-top: 1px solid rgba(245, 158, 11, 0.1); font-size: 0.8rem; color: #475569;">
+                                            <p style="margin: 0.2rem 0;"><strong>Produto Devolvido:</strong> {{ flut.produto_nome|default:"Desconhecido" }}</p>
+                                            <p style="margin: 0.2rem 0;"><strong>Nota de Origem:</strong> #{{ flut.nota_origem }} (Data: {{ flut.data_origem|default:"N/A" }})</p>
+                                        </div>
+                                    </details>
+                                    {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <div style="font-size: 0.85rem; color: #64748b; padding: 0.5rem;">Nenhum pagamento ou flutuação registrados para esta nota.</div>
                             {% endif %}
-                        </td>
-                        <td>
-                            <span class="badge {% if f.id_empresa %}badge-emerald{% else %}badge-blue{% endif %}">
-                                {% if f.tipo_entidade %}{{ f.tipo_entidade }}{% else %}FORNECEDOR{% endif %}
-                            </span>
-                        </td>
-                        <td>R$ {{ f.extrato.resumo.total_compras|default:"0.00"|floatformat:2 }}</td>
-                        <td>R$ {{ f.extrato.resumo.pagamentos_efetuados|default:"0.00"|floatformat:2 }}</td>
-                        <td class="text-rose"><strong>R$ {{ f.extrato.resumo.contas_a_pagar|default:"0.00"|floatformat:2 }}</strong></td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="6" style="text-align: center; color: var(--text-muted);">Nenhum fornecedor cadastrado...</td>
-                    </tr>
+                        </div>
+                    </details>
                     {% endfor %}
-                </tbody>
-            </table>
+                {% else %}
+                    <div style="font-size: 0.85rem; color: #64748b; padding: 0.5rem;">Nenhuma nota de compra vinculada a este fornecedor.</div>
+                {% endif %}
+            </div>
+        </details>
+        {% empty %}
+        <div style="padding: 2rem; text-align: center; color: #64748b; font-size: 1.1rem;">
+            Nenhum fornecedor encontrado no sistema.
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Modal de Detalhes do Pagamento -->
+<div id="modal-pagamento" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+    <div style="background: white; width: 90%; max-width: 600px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); overflow: hidden;">
+        <div style="padding: 1rem 1.5rem; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; background: #f8fafc;">
+            <h3 style="margin: 0; color: #1e293b; font-size: 1.25rem;">Detalhes do Pagamento</h3>
+            <button onclick="fecharModalPagamento()" style="background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #64748b;">&times;</button>
+        </div>
+        <div id="modal-pagamento-conteudo" style="padding: 1.5rem; max-height: 70vh; overflow-y: auto;">
+            <div style="text-align: center; color: #64748b;">Carregando informações...</div>
+        </div>
+        <div style="padding: 1rem 1.5rem; border-top: 1px solid #e2e8f0; background: #f8fafc; text-align: right;">
+            <button onclick="fecharModalPagamento()" class="btn btn-secondary">Fechar</button>
         </div>
     </div>
 </div>
+
+<!-- Modais -->
+<div id="modal-nova-compra" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 2rem; border-radius: 8px; width: 800px; max-width: 95%;">
+        <h3 style="margin-top: 0; color: var(--brand-blue-dark);" id="modal-compra-title">Nova Compra</h3>
+        <input type="hidden" id="compra-fornecedor-id">
+        
+        <div style="display: flex; gap: 2rem; margin-top: 1rem;">
+            <!-- Coluna Esquerda: Formulario -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Produto (Apenas Simples)</label>
+                    <select id="compra-produto" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"></select>
+                </div>
+                <div style="display: flex; gap: 1rem;">
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Quantidade</label>
+                        <input type="number" id="compra-qtd" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;" min="0.01" step="0.01">
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Custo Unit. (R$)</label>
+                        <input type="number" id="compra-custo-unit" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;" min="0" step="0.01">
+                    </div>
+                </div>
+                <button onclick="adicionarProdutoCompra()" style="background: #3b82f6; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer; font-weight: bold;">Adicionar Produto</button>
+                
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 0.5rem 0;">
+                
+                <div>
+                    <label style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Desconto na Nota</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select id="compra-desc-tipo" style="padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;" onchange="calcularTotalCompra()">
+                            <option value="R$">R$</option>
+                            <option value="%">%</option>
+                        </select>
+                        <input type="number" id="compra-desc-valor" style="flex: 1; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;" min="0" step="0.01" value="0" oninput="calcularTotalCompra()">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Coluna Direita: Lista de Produtos -->
+            <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem; display: flex; flex-direction: column;">
+                <h4 style="margin-top: 0; color: #1e293b; font-size: 0.95rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 0.5rem;">Produtos Adicionados</h4>
+                <div id="compra-lista-produtos" style="flex: 1; overflow-y: auto; max-height: 200px; margin-bottom: 1rem; font-size: 0.85rem;">
+                    <div style="color: #94a3b8; text-align: center; margin-top: 2rem;">Nenhum produto adicionado</div>
+                </div>
+                <div style="border-top: 1px solid #cbd5e1; padding-top: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: #64748b;">
+                        <span>Subtotal:</span>
+                        <span id="compra-subtotal">R$ 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: #ef4444; margin-top: 0.25rem;">
+                        <span>Desconto:</span>
+                        <span id="compra-valor-desconto">- R$ 0.00</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 1.1rem; color: #1e293b; margin-top: 0.5rem;">
+                        <span>Total Final:</span>
+                        <span id="compra-total-final">R$ 0.00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+            <button onclick="fecharModalCompra()" style="background: white; color: #64748b; border: 1px solid #cbd5e1; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Cancelar</button>
+            <button onclick="salvarCompra()" style="background: var(--brand-blue); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;">Salvar Compra</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-nova-reposicao" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 2rem; border-radius: 8px; width: 800px; max-width: 95%;">
+        <h3 style="margin-top: 0; color: #059669;" id="modal-reposicao-title">Nova Reposição</h3>
+        <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">Compensa perdas anteriores adicionando estoque sem gerar custo financeiro.</p>
+        <input type="hidden" id="reposicao-fornecedor-id">
+        
+        <div style="display: flex; gap: 2rem;">
+            <!-- Coluna Esquerda: Formulario -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 1rem;">
+                <div>
+                    <label style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Produto (Apenas Simples)</label>
+                    <select id="reposicao-produto" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;"></select>
+                </div>
+                <div>
+                    <label style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Quantidade Reposta</label>
+                    <input type="number" id="reposicao-qtd" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;" min="0.01" step="0.01">
+                </div>
+                <button onclick="adicionarProdutoReposicao()" style="background: #10b981; color: white; border: none; padding: 0.5rem; border-radius: 4px; cursor: pointer; font-weight: bold;">Adicionar Produto</button>
+            </div>
+            
+            <!-- Coluna Direita: Lista de Produtos -->
+            <div style="flex: 1; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 1rem; display: flex; flex-direction: column;">
+                <h4 style="margin-top: 0; color: #1e293b; font-size: 0.95rem; border-bottom: 1px solid #cbd5e1; padding-bottom: 0.5rem;">Produtos para Repor</h4>
+                <div id="reposicao-lista-produtos" style="flex: 1; overflow-y: auto; max-height: 200px; margin-bottom: 1rem; font-size: 0.85rem;">
+                    <div style="color: #94a3b8; text-align: center; margin-top: 2rem;">Nenhum produto adicionado</div>
+                </div>
+                <div style="border-top: 1px solid #cbd5e1; padding-top: 0.5rem;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.9rem; color: #64748b;">
+                        <span>Total de Itens:</span>
+                        <span id="reposicao-total-itens">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1.5rem;">
+            <button onclick="fecharModalReposicao()" style="background: white; color: #64748b; border: 1px solid #cbd5e1; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Cancelar</button>
+            <button onclick="salvarReposicao()" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: bold;">Registrar Reposição</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-pagar-nota" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+    <div style="background: white; padding: 2rem; border-radius: 8px; width: 400px; max-width: 90%;">
+        <h3 style="margin-top: 0; color: #1e293b;">Efetuar Pagamento</h3>
+        <div style="background: #f8fafc; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; border: 1px solid #e2e8f0;">
+            <div style="font-size: 0.75rem; color: #64748b;">Saldo Atual em Caixa (Empresa)</div>
+            <div style="font-size: 1.1rem; font-weight: 700; color: #059669;">R$ {{ saldo_caixa|floatformat:2 }}</div>
+        </div>
+        <input type="hidden" id="pagamento-nota-id">
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+            <div>
+                <label style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Valor do Pagamento (R$)</label>
+                <input type="number" id="pagamento-valor" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;" min="0.01" step="0.01">
+            </div>
+            <div>
+                <label style="display: block; font-size: 0.85rem; color: #64748b; margin-bottom: 0.25rem;">Forma de Pagamento</label>
+                <select id="pagamento-forma" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+                    <option value="1">Dinheiro</option>
+                    <option value="4">Pix</option>
+                    <option value="5">Transferência Bancária</option>
+                </select>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+                <button onclick="document.getElementById('modal-pagar-nota').style.display = 'none'" style="background: white; color: #64748b; border: 1px solid #cbd5e1; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Cancelar</button>
+                <button onclick="salvarPagamento()" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Pagar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
 <script>
-function toggleFornCampos() {
-    const tipo = document.getElementById('forn-tipo').value;
-    const fE = document.getElementById('campo-forn-empresa');
-    const fP = document.getElementById('campo-forn-pessoa');
-
-    if (tipo === 'EMPRESA') {
-        fE.style.display = 'block'; fP.style.display = 'none';
-    } else if (tipo === 'PESSOA') {
-        fE.style.display = 'none'; fP.style.display = 'block';
-    } else if (tipo === 'VINCULO') {
-        fE.style.display = 'block'; fP.style.display = 'block';
+const mapaPerdas = JSON.parse('{{ mapa_perdas_json|escapejs }}');
+let carrinhoCompra = [];
+let carrinhoReposicao = [];
+async function abrirModalPagamento(idPagamento) {
+    const modal = document.getElementById('modal-pagamento');
+    const conteudo = document.getElementById('modal-pagamento-conteudo');
+    
+    modal.style.display = 'flex';
+    conteudo.innerHTML = '<div style="text-align: center; color: #64748b;">Carregando informações...</div>';
+    
+    try {
+        const resp = await fetch(`/api/detalhes-pagamento/${idPagamento}/`);
+        const json = await resp.json();
+        
+        if (json.sucesso) {
+            const d = json.dados;
+            // Render basic JSON view for now, could be improved with markdown if needed
+            let html = `
+                <div style="display: grid; gap: 1rem;">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
+                        <span style="color: #64748b;">ID Pagamento</span>
+                        <strong style="color: #1e293b;">#${d.id}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
+                        <span style="color: #64748b;">Data Pagamento</span>
+                        <strong style="color: #1e293b;">${d.dataPagamento}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
+                        <span style="color: #64748b;">Valor</span>
+                        <strong style="color: #059669; font-size: 1.1rem;">R$ ${parseFloat(d.valor).toFixed(2)}</strong>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
+                        <span style="color: #64748b;">Forma de Pagamento</span>
+                        <strong style="color: #1e293b;">${d.formaPagamento}</strong>
+                    </div>
+                </div>
+            `;
+            
+            if (d.snapshot_sazonal && d.snapshot_sazonal.registrado) {
+                const s = d.snapshot_sazonal;
+                html += `
+                    <div style="margin-top: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0;">
+                        <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: #334155; font-size: 0.95rem;">🌤️ Condições Sazonais no Momento da Compra</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.85rem;">
+                            <div><span style="color: #64748b;">Clima:</span> <strong>${s.indicador_clima}</strong></div>
+                            <div><span style="color: #64748b;">Temperatura:</span> <strong>${s.temperatura_atual}</strong></div>
+                            <div><span style="color: #64748b;">Rio:</span> <strong>${s.indicador_rio}</strong></div>
+                            <div><span style="color: #64748b;">Chuva:</span> <strong>${s.indicador_chuva}</strong></div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            conteudo.innerHTML = html;
+        } else {
+            conteudo.innerHTML = `<div style="text-align: center; color: #dc2626;">Erro: ${json.mensagem}</div>`;
+        }
+    } catch (e) {
+        conteudo.innerHTML = `<div style="text-align: center; color: #dc2626;">Erro ao buscar informações de pagamento.</div>`;
     }
 }
 
-async function cadastrarFornecedor(e) {
-    e.preventDefault();
-    const tipo = document.getElementById('forn-tipo').value;
-    const nomeE = document.getElementById('forn-nome-empresa').value;
-    const nomeP = document.getElementById('forn-nome-pessoa').value;
-    const tel = document.getElementById('forn-telefone').value;
+async function carregarProdutosSimples(selectId) {
+    const sel = document.getElementById(selectId);
+    sel.innerHTML = '<option value="">Carregando...</option>';
+    try {
+        const res = await fetch('/api/buscar-produtos/?tipo=simples');
+        const json = await res.json();
+        sel.innerHTML = '<option value="">Selecione um produto</option>';
+        if(json.sucesso) {
+            json.produtos.forEach(p => {
+                sel.innerHTML += `<option value="${p.id}">${p.nome}</option>`;
+            });
+        }
+    } catch(e) {
+        sel.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
 
-    const payload = {
-        tipo: tipo,
-        is_fornecedor: true,
-        contatos: { "TELEFONE": tel }
-    };
+function atualizarVisualizacaoCompra() {
+    const lista = document.getElementById('compra-lista-produtos');
+    const subtotalEl = document.getElementById('compra-subtotal');
+    const descontoEl = document.getElementById('compra-valor-desconto');
+    const totalFinalEl = document.getElementById('compra-total-final');
+    
+    if (carrinhoCompra.length === 0) {
+        lista.innerHTML = '<div style="color: #94a3b8; text-align: center; margin-top: 2rem;">Nenhum produto adicionado</div>';
+        subtotalEl.innerText = 'R$ 0.00';
+        descontoEl.innerText = '- R$ 0.00';
+        totalFinalEl.innerText = 'R$ 0.00';
+        return;
+    }
+    
+    let html = '';
+    let subtotal = 0;
+    
+    carrinhoCompra.forEach((item, index) => {
+        const totalItem = item.qtd * item.custo_unit;
+        subtotal += totalItem;
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid #f1f5f9;">
+                <div>
+                    <div style="font-weight: 600; color: #334155;">${item.nome}</div>
+                    <div style="color: #64748b; font-size: 0.8rem;">${item.qtd}x R$ ${item.custo_unit.toFixed(2)}</div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="font-weight: bold; color: #1e293b;">R$ ${totalItem.toFixed(2)}</span>
+                    <button onclick="removerProdutoCompra(${index})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.1rem;">&times;</button>
+                </div>
+            </div>
+        `;
+    });
+    
+    lista.innerHTML = html;
+    
+    const descTipo = document.getElementById('compra-desc-tipo').value;
+    let descValor = parseFloat(document.getElementById('compra-desc-valor').value) || 0;
+    
+    let valorDesconto = 0;
+    if (descTipo === '%') {
+        valorDesconto = subtotal * (descValor / 100);
+    } else {
+        valorDesconto = descValor;
+    }
+    
+    const totalFinal = Math.max(0, subtotal - valorDesconto);
+    
+    subtotalEl.innerText = `R$ ${subtotal.toFixed(2)}`;
+    descontoEl.innerText = `- R$ ${valorDesconto.toFixed(2)}`;
+    totalFinalEl.innerText = `R$ ${totalFinal.toFixed(2)}`;
+}
 
-    if (tipo === 'EMPRESA') payload.nome = nomeE;
-    else if (tipo === 'PESSOA') payload.nome = nomeP;
-    else if (tipo === 'VINCULO') {
-        payload.empresa = { nome: nomeE };
-        payload.pessoa = { nome: nomeP };
+function calcularTotalCompra() {
+    atualizarVisualizacaoCompra();
+}
+
+function adicionarProdutoCompra() {
+    const select = document.getElementById('compra-produto');
+    const id = select.value;
+    const nome = select.options[select.selectedIndex]?.text;
+    const qtd = parseFloat(document.getElementById('compra-qtd').value);
+    const custo = parseFloat(document.getElementById('compra-custo-unit').value);
+    
+    if(!id || isNaN(qtd) || isNaN(custo) || qtd <= 0 || custo < 0) {
+        alert("Preencha todos os campos do produto corretamente.");
+        return;
+    }
+    
+    carrinhoCompra.push({id: parseInt(id), nome: nome, qtd: qtd, custo_unit: custo});
+    
+    document.getElementById('compra-qtd').value = '';
+    document.getElementById('compra-custo-unit').value = '';
+    atualizarVisualizacaoCompra();
+}
+
+function removerProdutoCompra(index) {
+    carrinhoCompra.splice(index, 1);
+    atualizarVisualizacaoCompra();
+}
+
+function fecharModalCompra() {
+    document.getElementById('modal-nova-compra').style.display = 'none';
+}
+
+function abrirNovaCompra(fornecedorId, fornecedorNome) {
+    document.getElementById('compra-fornecedor-id').value = fornecedorId;
+    document.getElementById('modal-compra-title').innerText = "Nova Compra - " + fornecedorNome;
+    document.getElementById('modal-nova-compra').style.display = 'flex';
+    carrinhoCompra = [];
+    document.getElementById('compra-desc-valor').value = '0';
+    document.getElementById('compra-desc-tipo').value = 'R$';
+    atualizarVisualizacaoCompra();
+    carregarProdutosSimples('compra-produto');
+}
+
+async function salvarCompra() {
+    const fornecedorId = document.getElementById('compra-fornecedor-id').value;
+    const descTipo = document.getElementById('compra-desc-tipo').value;
+    const descValor = parseFloat(document.getElementById('compra-desc-valor').value) || 0;
+    
+    if (carrinhoCompra.length === 0) {
+        alert("Adicione pelo menos um produto na compra.");
+        return;
     }
 
     try {
-        const resp = await fetch('/api/cadastrar-entidade/', {
+        const payload = {
+            fornecedor_id: parseInt(fornecedorId),
+            desconto_tipo: descTipo,
+            desconto_valor: descValor,
+            produtos: carrinhoCompra
+        };
+        
+        const resp = await fetch('/api/comprar/', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {'Content-Type': 'application/json'},
             body: JSON.stringify(payload)
         });
-        const res = await resp.json();
-        if (res.sucesso) {
-            alert("✅ Fornecedor cadastrado com sucesso!");
-            window.location.reload();
+        const json = await resp.json();
+        if(json.sucesso) {
+            alert(json.mensagem);
+            location.reload();
         } else {
-            alert(`❌ Erro: ${res.mensagem}`);
+            alert("Erro: " + json.mensagem);
         }
-    } catch (err) {
-        alert(`❌ Erro: ${err}`);
+    } catch(e) {
+        alert("Erro de conexão.");
     }
+}
+
+// Lógica Reposição
+function atualizarVisualizacaoReposicao() {
+    const lista = document.getElementById('reposicao-lista-produtos');
+    const totalItens = document.getElementById('reposicao-total-itens');
+    
+    if (carrinhoReposicao.length === 0) {
+        lista.innerHTML = '<div style="color: #94a3b8; text-align: center; margin-top: 2rem;">Nenhum produto adicionado</div>';
+        totalItens.innerText = '0';
+        return;
+    }
+    
+    let html = '';
+    carrinhoReposicao.forEach((item, index) => {
+        html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid #f1f5f9;">
+                <div>
+                    <div style="font-weight: 600; color: #334155;">${item.nome}</div>
+                    <div style="color: #64748b; font-size: 0.8rem;">Qtd: ${item.qtd}</div>
+                </div>
+                <button onclick="removerProdutoReposicao(${index})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.1rem;">&times;</button>
+            </div>
+        `;
+    });
+    
+    lista.innerHTML = html;
+    totalItens.innerText = carrinhoReposicao.length;
+}
+
+function adicionarProdutoReposicao() {
+    const select = document.getElementById('reposicao-produto');
+    const id = select.value;
+    if(!id) {
+        alert("Selecione um produto.");
+        return;
+    }
+    const nome = select.options[select.selectedIndex]?.text;
+    const custo = parseFloat(select.options[select.selectedIndex]?.getAttribute('data-custo')) || 0;
+    const notaPerdaId = parseInt(select.options[select.selectedIndex]?.getAttribute('data-nota-perda'));
+    const qtd = parseFloat(document.getElementById('reposicao-qtd').value);
+    
+    if(isNaN(qtd) || qtd <= 0) {
+        alert("Preencha todos os campos do produto corretamente.");
+        return;
+    }
+    
+    carrinhoReposicao.push({id: parseInt(id), nome: nome, qtd: qtd, custo_unit: custo, id_nota_perda: notaPerdaId});
+    
+    document.getElementById('reposicao-qtd').value = '';
+    atualizarVisualizacaoReposicao();
+}
+
+function removerProdutoReposicao(index) {
+    carrinhoReposicao.splice(index, 1);
+    atualizarVisualizacaoReposicao();
+}
+
+function fecharModalReposicao() {
+    document.getElementById('modal-nova-reposicao').style.display = 'none';
+}
+
+function abrirReposicao(fornecedorId, fornecedorNome) {
+    document.getElementById('modal-reposicao-title').innerText = "Nova Reposição - " + fornecedorNome;
+    document.getElementById('reposicao-fornecedor-id').value = fornecedorId;
+    
+    carrinhoReposicao = [];
+    atualizarVisualizacaoReposicao();
+    document.getElementById('reposicao-qtd').value = '';
+    
+    const select = document.getElementById('reposicao-produto');
+    select.innerHTML = '';
+    const perdas = mapaPerdas[fornecedorId] || [];
+    
+    if (perdas.length === 0) {
+        select.innerHTML = '<option value="">Nenhuma perda encontrada</option>';
+    } else {
+        perdas.forEach(p => {
+            const custo = p.quantidade > 0 ? (p.valor / p.quantidade) : 0;
+            select.innerHTML += `<option value="${p.id_produto}" data-custo="${custo}" data-nota-perda="${p.id_nota}">${p.produto_nome} (Perda #${p.id_nota} - ${p.data})</option>`;
+        });
+    }
+    
+    document.getElementById('modal-nova-reposicao').style.display = 'flex';
+}
+
+async function salvarReposicao() {
+    const fornecedorId = document.getElementById('reposicao-fornecedor-id').value;
+    
+    if (carrinhoReposicao.length === 0) {
+        alert("Adicione pelo menos um produto na reposição.");
+        return;
+    }
+
+    try {
+        const idNotaPerdaOrigem = carrinhoReposicao[0].id_nota_perda;
+
+        const payload = {
+            fornecedor_id: parseInt(fornecedorId),
+            id_nota_perda_origem: idNotaPerdaOrigem,
+            produtos: carrinhoReposicao
+        };
+        
+        const resp = await fetch('/api/compensar/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const json = await resp.json();
+        if(json.sucesso) {
+            alert(json.mensagem);
+            location.reload();
+        } else {
+            alert("Erro: " + json.mensagem);
+        }
+    } catch(e) {
+        alert("Erro de conexão.");
+    }
+}
+
+function abrirModalPagarNota(notaId, valorMax) {
+    document.getElementById('pagamento-nota-id').value = notaId;
+    document.getElementById('pagamento-valor').value = valorMax;
+    document.getElementById('modal-pagar-nota').style.display = 'flex';
+}
+
+async function salvarPagamento() {
+    const notaId = document.getElementById('pagamento-nota-id').value;
+    const valor = document.getElementById('pagamento-valor').value;
+    const forma = document.getElementById('pagamento-forma').value;
+    
+    if(!valor || parseFloat(valor) <= 0) {
+        alert("Valor inválido.");
+        return;
+    }
+    
+    try {
+        const resp = await fetch('/api/registrar-pagamento/', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                id_fluxo_nota: parseInt(notaId),
+                valor: parseFloat(valor),
+                id_forma_pagamento: parseInt(forma)
+            })
+        });
+        const json = await resp.json();
+        if(json.sucesso) {
+            alert("Pagamento efetuado!");
+            location.reload();
+        } else {
+            alert("Erro: " + json.mensagem);
+        }
+    } catch(e) {
+        alert("Erro na requisição.");
+    }
+}
+
+function fecharModalPagamento() {
+    document.getElementById('modal-pagamento').style.display = 'none';
 }
 </script>
 {% endblock %}

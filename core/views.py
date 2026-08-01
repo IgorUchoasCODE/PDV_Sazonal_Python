@@ -168,7 +168,6 @@ def api_resumo_sazonal(request, produto_id):
 # Encaminham direto para o backend real (InventoryManager / PaymentManager).
 # Sempre devolvem {"sucesso": bool, "mensagem": str, ...} em JSON.
 # ─────────────────────────────────────────────────────────────────────────
-@login_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_cadastrar_produto(request):
@@ -192,7 +191,28 @@ def api_cadastrar_produto(request):
         return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao cadastrar produto: {e}'})
 
 
-@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_atualizar_preco_produto(request):
+    dados = _corpo_json(request)
+    try:
+        from br.com.pdv.src.BDD.queryEnum import DB
+        id_produto = int(dados.get('id', 0))
+        preco_venda = float(dados.get('preco_venda', 0))
+        
+        if id_produto <= 0 or preco_venda <= 0:
+            return JsonResponse({'sucesso': False, 'mensagem': "Produto e preço são obrigatórios e maiores que zero."})
+            
+        from br.com.pdv.src.BDD.bancodb import BancoDB
+        with BancoDB.obter_conexao() as conn:
+            cur = conn.cursor()
+            cur.execute("UPDATE produto SET varejo = ? WHERE id = ?", (preco_venda, id_produto))
+            conn.commit()
+            
+        return JsonResponse({'sucesso': True, 'mensagem': "Preço atualizado com sucesso."})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao atualizar preço: {e}'})
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_comprar(request):
@@ -207,22 +227,94 @@ def api_comprar(request):
         return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao registrar compra: {e}'})
 
 
-@login_required
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_vender(request):
     dados = _corpo_json(request)
     try:
         from br.com.pdv.src.memory.inventoryManager import InventoryManager
+        from br.com.pdv.src.memory.paymentManager import PaymentManager
         nota = InventoryManager.insert_venda(dados)
         if nota is None:
             return JsonResponse({'sucesso': False, 'mensagem': 'Não foi possível registrar a venda. Confira cliente, produtos e estoque disponível.'})
-        return JsonResponse({'sucesso': True, 'mensagem': 'Venda registrada com sucesso.'})
+        
+        nota_dados = nota.getDados()
+        id_nota = nota_dados.get("id")
+        valor_total = nota_dados.get("valorTotalVenda", 0)
+        
+        pagamentos = dados.get("pagamentos", [])
+        # Tratamento legado para suportar o formato antigo caso alguém ainda use
+        if not pagamentos and "id_forma_pagamento" in dados and "valor_pagamento" in dados:
+            pagamentos = [{"id_forma_pagamento": dados["id_forma_pagamento"], "valor": dados["valor_pagamento"]}]
+            
+        for p in pagamentos:
+            v_pago = float(p.get("valor") or 0)
+            id_forma = p.get("id_forma_pagamento")
+            if v_pago > 0 and id_forma:
+                PaymentManager.registrar_pagamento({
+                    "id_fluxo_nota": id_nota,
+                    "id_forma_pagamento": id_forma,
+                    "valor": v_pago
+                })
+            
+        return JsonResponse({
+            'sucesso': True, 
+            'mensagem': 'Venda registrada com sucesso.',
+            'id_fluxo_nota': id_nota,
+            'valor_total': valor_total
+        })
     except Exception as e:
         return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao registrar venda: {e}'})
 
 
-@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_perder(request):
+    dados = _corpo_json(request)
+    try:
+        from br.com.pdv.src.memory.inventoryManager import InventoryManager
+        nota = InventoryManager.insert_perda(dados)
+        if nota is None:
+            return JsonResponse({'sucesso': False, 'mensagem': 'Não foi possível registrar a perda.'})
+        return JsonResponse({'sucesso': True, 'mensagem': 'Perda registrada com sucesso.'})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao registrar perda: {e}'})
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_devolver(request):
+    dados = _corpo_json(request)
+    try:
+        from br.com.pdv.src.memory.inventoryManager import InventoryManager
+        from br.com.pdv.src.memory.paymentManager import PaymentManager
+        nota = InventoryManager.insert_devolucao(dados)
+        if nota is None:
+            return JsonResponse({'sucesso': False, 'mensagem': 'Não foi possível registrar a devolução.'})
+            
+        nota_dados = nota.getDados()
+        id_nota = nota_dados.get("id")
+        
+        # Estorno
+        pagamentos = dados.get("pagamentos", [])
+        if not pagamentos and "id_forma_pagamento" in dados and "valor_pagamento" in dados:
+            pagamentos = [{"id_forma_pagamento": dados["id_forma_pagamento"], "valor": dados["valor_pagamento"]}]
+            
+        for p in pagamentos:
+            v_pago = float(p.get("valor") or 0)
+            id_forma = p.get("id_forma_pagamento")
+            if v_pago > 0 and id_forma:
+                PaymentManager.registrar_pagamento({
+                    "id_fluxo_nota": id_nota, 
+                    "id_forma_pagamento": id_forma,
+                    "valor": v_pago
+                })
+            
+        return JsonResponse({'sucesso': True, 'mensagem': 'Devolução registrada com sucesso.', 'id_fluxo_nota': id_nota})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao registrar devolução: {e}'})
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_cadastrar_entidade(request):
@@ -234,8 +326,30 @@ def api_cadastrar_entidade(request):
     except Exception as e:
         return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao cadastrar entidade: {e}'})
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_apagar_entidade(request):
+    dados = _corpo_json(request)
+    try:
+        from br.com.pdv.src.memory.paymentManager import PaymentManager
+        resultado = PaymentManager.apagar_entidade(dados.get("id"))
+        return JsonResponse(resultado)
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao apagar entidade: {e}'})
 
-@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_editar_entidade(request):
+    dados = _corpo_json(request)
+    try:
+        from br.com.pdv.src.memory.paymentManager import PaymentManager
+        resultado = PaymentManager.editar_entidade(dados)
+        return JsonResponse(resultado)
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao editar entidade: {e}'})
+
+
+
 @csrf_exempt
 @require_http_methods(["POST"])
 def api_registrar_pagamento(request):
@@ -247,12 +361,233 @@ def api_registrar_pagamento(request):
     except Exception as e:
         return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao registrar pagamento: {e}'})
 
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_registrar_pagamento_entidade(request):
+    dados = _corpo_json(request)
+    try:
+        from br.com.pdv.src.memory.paymentManager import PaymentManager
+        id_entidade = dados.get("id_entidade")
+        valor = dados.get("valor")
+        id_forma = dados.get("id_forma_pagamento", 1)
+        if not id_entidade or valor is None:
+            return JsonResponse({'sucesso': False, 'mensagem': 'id_entidade e valor são obrigatórios.'})
+            
+        resultado = PaymentManager.registrar_pagamento_por_entidade(id_entidade, valor, id_forma)
+        return JsonResponse(resultado)
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao registrar pagamento: {e}'})
 
-@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_pagamento_lote(request):
+    dados = _corpo_json(request)
+    try:
+        from br.com.pdv.src.memory.paymentManager import PaymentManager
+        resultado = PaymentManager.registrar_pagamentos_lote(dados)
+        return JsonResponse(resultado)
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao registrar pagamento em lote: {e}'})
+
+
+@require_http_methods(["GET"])
+def api_extrato_entidade(request, id_entidade):
+    """Retorna o extrato financeiro de uma entidade específica para exibição no modal."""
+    try:
+        from br.com.pdv.src.memory.paymentManager import PaymentManager
+        import datetime
+
+        extrato = PaymentManager.get_extrato_entidade(id_entidade)
+        resumo = extrato.get("resumo", {})
+        historico_pagamentos = extrato.get("historico_pagamentos", [])
+
+        # Serializa datas
+        pags_serializados = []
+        for p in historico_pagamentos:
+            p2 = dict(p)
+            if hasattr(p2.get('data_pagamento'), 'isoformat'):
+                p2['data_pagamento'] = p2['data_pagamento'].isoformat()
+            pags_serializados.append(p2)
+
+        return JsonResponse({
+            "sucesso": True,
+            "id_entidade": id_entidade,
+            "resumo": resumo,
+            "historico_pagamentos": pags_serializados[:20],
+        })
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'erro': str(e)})
+
+
+def api_detalhes_pagamento(request, id):
+    import datetime
+    from django.http import HttpResponse, JsonResponse
+    from br.com.pdv.src.BDD.bancodb import BancoDB
+    
+    def json_serial(obj):
+        if isinstance(obj, (datetime.datetime, datetime.date)):
+            return obj.isoformat()
+        raise TypeError(f"Type {type(obj)} not serializable")
+        
+    try:
+        from br.com.pdv.src.memory.paymentManager import PaymentManager
+        pagamentos = PaymentManager.obter_pagamentos_nota(id)
+        
+        with BancoDB.obter_conexao() as conn:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT 
+                    fne.id, 
+                    fne.id_tipoNota as tipo_id,
+                    (SELECT indicador_clima FROM snapshot_sazonal WHERE id_fluxo_nota = fne.id LIMIT 1) as clima_atual,
+                    (SELECT indicador_chuva FROM snapshot_sazonal WHERE id_fluxo_nota = fne.id LIMIT 1) as estacao_ano,
+                    (SELECT evento_nome FROM snapshot_sazonal WHERE id_fluxo_nota = fne.id LIMIT 1) as evento_especial
+                FROM fluxosNotasEstoque fne WHERE fne.id = ?
+            """, (id,))
+            nota_row = cur.fetchone()
+            
+        if nota_row:
+            tipos = {1: "COMPRA", 2: "VENDA", 3: "DEVOLUÇÃO", 4: "PERDA", 5: "REPOSIÇÃO/COMPENSAÇÃO"}
+            nota_row = dict(nota_row)
+            
+            from br.com.pdv.src.financeiro.notaPagamento import NotaPagamento
+            for p in pagamentos:
+                p['forma_pagamento_desc'] = NotaPagamento.FORMAS_PAGAMENTO_MAP.get(p.get('id_forma_pagamento', 1), "DINHEIRO")
+                
+            snapshot_sazonal = None
+            if nota_row.get("clima_atual"):
+                snapshot_sazonal = {
+                    "clima_atual": nota_row.get("clima_atual"),
+                    "estacao_ano": nota_row.get("estacao_ano"),
+                    "evento_especial": nota_row.get("evento_especial")
+                }
+                
+            dados = {
+                "id_fluxo_nota": id,
+                "nota_detalhes": {
+                    "tipo": tipos.get(nota_row["tipo_id"], "DESCONHECIDO"),
+                    "snapshot_sazonal": snapshot_sazonal
+                },
+                "pagamentos": pagamentos
+            }
+            dados_json = json.dumps({"sucesso": True, "dados": dados}, default=json_serial)
+            return HttpResponse(dados_json, content_type="application/json")
+            
+        return JsonResponse({"sucesso": False, "mensagem": "Nota não encontrada."})
+    except Exception as e:
+        return JsonResponse({"sucesso": False, "mensagem": str(e)})
+
+
 @require_http_methods(["GET"])
 def api_buscar_produtos(request):
     termo = request.GET.get('q', '').strip().lower()
+    tipo = request.GET.get('tipo', '').strip().lower()
     catalogo = helpers.get_produtos_catalogo()
     if termo:
         catalogo = [p for p in catalogo if termo in p['nome'].lower()]
+    if tipo == 'simples':
+        catalogo = [p for p in catalogo if not p.get('eh_composto')]
     return JsonResponse({'sucesso': True, 'produtos': catalogo})
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_compensar(request):
+    dados = _corpo_json(request)
+    try:
+        from br.com.pdv.src.memory.inventoryManager import InventoryManager
+        nota = InventoryManager.insert_compensacao(dados)
+        if nota is None:
+            return JsonResponse({'sucesso': False, 'mensagem': 'Não foi possível registrar a reposição.'})
+        return JsonResponse({'sucesso': True, 'mensagem': 'Reposição registrada com sucesso.'})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao registrar reposição: {e}'})
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# PDV — Perda Pós-Venda (fluxo encadeado: Devolução → Perda)
+# ─────────────────────────────────────────────────────────────────────────
+@csrf_exempt
+@require_http_methods(["POST"])
+def api_perder_pos_venda(request):
+    """
+    Registra uma Perda Pós-Venda em duas etapas encadeadas:
+      1. Cria uma Nota de Devolução referenciando a nota de devolução selecionada (ou a venda original)
+      2. Cria uma Nota de Perda referenciando a devolução recém-criada
+
+    Payload esperado:
+    {
+        "id_nota_devolucao": int,      # ID da devolução de origem
+        "produtos": [...],             # itens a perder
+        "data": "YYYY-MM-DD"           # opcional
+    }
+    """
+    dados = _corpo_json(request)
+    try:
+        from br.com.pdv.src.memory.inventoryManager import InventoryManager
+
+        id_nota_dev = dados.get("id_nota_devolucao")
+        produtos = dados.get("produtos", [])
+        data = dados.get("data", "")
+
+        if not id_nota_dev:
+            return JsonResponse({'sucesso': False, 'mensagem': "'id_nota_devolucao' é obrigatório."})
+        if not produtos:
+            return JsonResponse({'sucesso': False, 'mensagem': "'produtos' é obrigatório."})
+
+        # Etapa 2 — Nota de Perda referenciando a devolução
+        dados_perda = {
+            "id_nota_origem": id_nota_dev,
+            "produtos": produtos,
+            "data": data,
+        }
+        nota_perda = InventoryManager.insert_perda(dados_perda)
+        if nota_perda is None:
+            return JsonResponse({'sucesso': False, 'mensagem': 'Falha ao criar a Nota de Perda.'})
+
+        nota_perda_dados = nota_perda.getDados() if hasattr(nota_perda, 'getDados') else {}
+        id_nota_perda = nota_perda_dados.get("id", "?")
+
+        return JsonResponse({
+            'sucesso': True,
+            'mensagem': f'Perda pós-venda registrada. Nota de Perda #{id_nota_perda} criada referenciando devolução #{id_nota_dev}.',
+            'id_nota_devolucao': id_nota_dev,
+            'id_nota_perda': id_nota_perda,
+        })
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({'sucesso': False, 'mensagem': f'Erro ao registrar perda pós-venda: {e}'})
+
+
+@require_http_methods(["GET"])
+def api_listar_vendas(request):
+    """Retorna lista de Notas de Venda (tipo 2) para seleção no PDV."""
+    try:
+        notas = helpers.get_notas_venda()
+        return JsonResponse({'sucesso': True, 'notas': notas})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': str(e)})
+
+
+@require_http_methods(["GET"])
+def api_listar_devolucoes(request):
+    """Retorna lista de Notas de Devolução (tipo 3) para seleção no PDV."""
+    try:
+        notas = helpers.get_notas_devolucao()
+        return JsonResponse({'sucesso': True, 'notas': notas})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': str(e)})
+
+
+@require_http_methods(["GET"])
+def api_itens_nota(request):
+    """Retorna os itens de uma nota específica dado ?id=<id_nota>."""
+    id_nota = request.GET.get('id')
+    if not id_nota:
+        return JsonResponse({'sucesso': False, 'mensagem': "'id' é obrigatório."})
+    try:
+        itens = helpers.get_itens_nota(int(id_nota))
+        return JsonResponse({'sucesso': True, 'itens': itens})
+    except Exception as e:
+        return JsonResponse({'sucesso': False, 'mensagem': str(e)})
+

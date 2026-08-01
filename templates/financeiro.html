@@ -1,155 +1,664 @@
 {% extends "base.html" %}
 
 {% block title %}Financeiro & Contábil — Sazonalizei{% endblock %}
-{% block page_title %}Setor Financeiro & Rastreabilidade Contábil (PaymentManager){% endblock %}
+{% block page_title %}Setor Financeiro{% endblock %}
 
 {% block content %}
-<!-- BALANÇO FINANCEIRO GLOBAL -->
-<div class="grid-metrics">
-    <div class="metric-card">
-        <div class="metric-header">
-            <span>FATURAMENTO (VENDAS)</span>
-            <span>💰</span>
-        </div>
-        <div class="metric-value text-emerald">R$ {{ resumo.total_vendas|floatformat:2 }}</div>
-        <div class="metric-subtitle">Vendas totais brutas acumuladas</div>
-    </div>
 
-    <div class="metric-card">
-        <div class="metric-header">
-            <span>RECEBIMENTOS DE CAIXA</span>
-            <span>📥</span>
-        </div>
-        <div class="metric-value text-blue">R$ {{ resumo.pagamentos_recebidos|floatformat:2 }}</div>
-        <div class="metric-subtitle">Total efetivamente recebido</div>
-    </div>
+{# ═══════════════════════════════════════════════════════════════ #}
+{# SEÇÃO 1 · KPIs — Indicadores Rápidos                           #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div style="display:grid; grid-template-columns:repeat(6,1fr); gap:1rem; margin-bottom:1.5rem;">
 
-    <div class="metric-card">
-        <div class="metric-header">
-            <span>CONTAS A RECEBER (PENDENTE)</span>
-            <span>⏳</span>
-        </div>
-        <div class="metric-value text-emerald">R$ {{ resumo.contas_a_receber|floatformat:2 }}</div>
-        <div class="metric-subtitle">Saldo a receber de clientes</div>
-    </div>
+  <!-- Faturamento -->
+  <div class="kpi-card kpi-green">
+    <div class="kpi-icon">💰</div>
+    <div class="kpi-label">FATURAMENTO</div>
+    <div class="kpi-value">R$ {{ resumo.total_vendas|floatformat:2 }}</div>
+    <div class="kpi-sub">Vendas brutas totais</div>
+  </div>
 
-    <div class="metric-card">
-        <div class="metric-header">
-            <span>CONTAS A PAGAR (FORNECEDORES)</span>
-            <span>📉</span>
-        </div>
-        <div class="metric-value text-rose">R$ {{ resumo.contas_a_pagar|floatformat:2 }}</div>
-        <div class="metric-subtitle">Saldo pendente a fornecedores</div>
-    </div>
+  <!-- Custo -->
+  <div class="kpi-card kpi-red">
+    <div class="kpi-icon">📦</div>
+    <div class="kpi-label">CUSTO (COMPRAS)</div>
+    <div class="kpi-value">R$ {{ resumo.total_compras|floatformat:2 }}</div>
+    <div class="kpi-sub">Total aquisições</div>
+  </div>
+
+  <!-- Lucro Bruto -->
+  <div class="kpi-card kpi-blue">
+    <div class="kpi-icon">📈</div>
+    <div class="kpi-label">LUCRO BRUTO</div>
+    <div class="kpi-value">R$ {{ resumo.lucro_bruto_estimado|floatformat:2 }}</div>
+    <div class="kpi-sub">Vendas − Custo FIFO</div>
+  </div>
+
+  <!-- Perdas -->
+  <div class="kpi-card kpi-amber">
+    <div class="kpi-icon">⚠️</div>
+    <div class="kpi-label">PERDAS</div>
+    <div class="kpi-value">R$ {{ resumo.total_perdas|floatformat:2 }}</div>
+    <div class="kpi-sub">Baixas contábeis</div>
+  </div>
+
+  <!-- Devoluções -->
+  <div class="kpi-card kpi-indigo">
+    <div class="kpi-icon">🔄</div>
+    <div class="kpi-label">DEVOLUÇÕES</div>
+    <div class="kpi-value">R$ {{ resumo.total_devolucoes|floatformat:2 }}</div>
+    <div class="kpi-sub">Estornos a clientes</div>
+  </div>
+
+  <!-- Saldo em Caixa — clicável para abrir fluxo -->
+  <div class="kpi-card {% if resumo.saldo_liquido_caixa >= 0 %}kpi-emerald{% else %}kpi-danger{% endif %} kpi-clickable"
+       onclick="abrirFluxoCaixa()" title="Clique para ver o Fluxo de Caixa completo">
+    <div class="kpi-icon">🏦</div>
+    <div class="kpi-label">SALDO EM CAIXA</div>
+    <div class="kpi-value">R$ {{ resumo.saldo_liquido_caixa|floatformat:2 }}</div>
+    <div class="kpi-sub">Recebido − Pago · Ver Fluxo ↗</div>
+  </div>
+
 </div>
 
-<div style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem;">
-    <!-- Registrar Pagamento / Quitação -->
-    <div class="metric-card">
-        <h3 style="margin-bottom: 1.25rem; border-bottom: 2px solid var(--border-color); padding-bottom: 0.5rem; color: var(--brand-blue-dark);">
-            💳 Registrar Liquidação / Pagamento
-        </h3>
+{# ═══════════════════════════════════════════════════════════════ #}
+{# SEÇÃO 2 · GRID PRINCIPAL: Gráfico + Liquidação                 #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
 
-        <form id="form-pagamento" onsubmit="registrarPagamento(event)">
-            <div style="margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Número ID da Nota (Compra ou Venda):</label>
-                <input type="number" id="pag-id-nota" class="input-field" placeholder="Ex: 234" required>
-            </div>
+  <!-- Gráfico de Lucratividade -->
+  <div class="fin-card">
+    <div class="fin-card-header">
+      <div>
+        <h3 class="fin-title">📊 Lucratividade por Período</h3>
+        <p class="fin-subtitle">Evolução diária de Vendas, Custo, Lucro, Perdas e Devoluções</p>
+      </div>
+      <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+        <!-- Legenda -->
+        <div class="chart-legend">
+          <span class="leg-dot" style="background:#10b981;"></span><span>Vendas</span>
+          <span class="leg-dot" style="background:#ef4444;"></span><span>Custo</span>
+          <span class="leg-dot" style="background:#3b82f6;"></span><span>Lucro</span>
+          <span class="leg-dot" style="background:#f59e0b;"></span><span>Perdas</span>
+          <span class="leg-dot" style="background:#8b5cf6;"></span><span>Devol.</span>
+        </div>
+        <!-- Filtros de período -->
+        <div class="filter-btn-group" id="chart-filters-fin">
+          <button class="filter-btn" data-days="7">7D</button>
+          <button class="filter-btn" data-days="30">30D</button>
+          <button class="filter-btn active" data-days="all">Tudo</button>
+        </div>
+      </div>
+    </div>
+    <div style="height:260px; position:relative;">
+      <canvas id="chartLucratividade"></canvas>
+    </div>
+  </div>
 
-            <div style="margin-bottom: 1rem;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Forma de Pagamento:</label>
-                <select id="pag-forma" class="form-control" required>
-                    {% for f in formas_pagamento %}
-                    <option value="{{ f.id }}">{{ f.descricao }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+  <!-- Liquidação Automática -->
+  <div class="fin-card" style="display:flex; flex-direction:column; gap:0.75rem;">
+    <h3 class="fin-title" style="margin-bottom:0;">💳 Liquidação de Pagamentos</h3>
+    <p class="fin-subtitle" style="margin:0;">Selecione a entidade para abater as notas em aberto (FIFO)</p>
 
-            <div style="margin-bottom: 1.25rem;">
-                <label style="font-size: 0.85rem; font-weight: 700; color: var(--text-muted);">Valor a Liquidar (R$):</label>
-                <input type="number" id="pag-valor" step="0.01" class="input-field" placeholder="Ex: 100.00" required>
-            </div>
+    <!-- Abas -->
+    <div style="display:flex; gap:0.5rem;">
+      <button id="btn-tab-cli" onclick="showTab('clientes')"
+        style="flex:1; padding:0.6rem; border:none; border-radius:6px; font-weight:700; cursor:pointer;
+               background:var(--brand-blue); color:white; font-size:0.85rem; transition:all 0.2s;">
+        👥 Clientes
+      </button>
+      <button id="btn-tab-forn" onclick="showTab('fornecedores')"
+        style="flex:1; padding:0.6rem; border:none; border-radius:6px; font-weight:700; cursor:pointer;
+               background:#e2e8f0; color:#64748b; font-size:0.85rem; transition:all 0.2s;">
+        🏢 Fornecedores
+      </button>
+    </div>
 
-            <button type="submit" class="btn btn-emerald" style="width: 100%;">
-                ✅ Confirmar Quitação / Baixa Contábil
+    <!-- Lista Clientes -->
+    <div id="tab-clientes" style="overflow-y:auto; max-height:200px; display:flex; flex-direction:column; gap:0.35rem;">
+      {% for ent in entidades %}{% if ent.is_cliente %}
+      <div class="ent-item" onclick="selecionarEntidade('{{ ent.id_entidade }}','{{ ent.pessoa_nome|default:ent.empresa_nome }}',{{ ent.saldo_devedor_cliente|stringformat:'f' }},{{ ent.adiantamento_cliente|stringformat:'f' }})">
+        <span class="ent-name">{{ ent.pessoa_nome|default:ent.empresa_nome }}</span>
+        {% if ent.adiantamento_cliente > 0 %}
+          <span class="ent-badge badge-credit">+R$ {{ ent.adiantamento_cliente|floatformat:2 }}</span>
+        {% elif ent.saldo_devedor_cliente > 0 %}
+          <span class="ent-badge badge-debt">−R$ {{ ent.saldo_devedor_cliente|floatformat:2 }}</span>
+        {% else %}
+          <span class="ent-badge badge-zero">Quitado</span>
+        {% endif %}
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+
+    <!-- Lista Fornecedores -->
+    <div id="tab-fornecedores" style="overflow-y:auto; max-height:200px; display:none; flex-direction:column; gap:0.35rem;">
+      {% for ent in entidades %}{% if ent.is_fornecedor %}
+      <div class="ent-item" onclick="selecionarEntidade('{{ ent.id_entidade }}','{{ ent.pessoa_nome|default:ent.empresa_nome }}',{{ ent.saldo_devedor_fornecedor|stringformat:'f' }},{{ ent.adiantamento_fornecedor|stringformat:'f' }})">
+        <span class="ent-name">{{ ent.pessoa_nome|default:ent.empresa_nome }}</span>
+        {% if ent.adiantamento_fornecedor > 0 %}
+          <span class="ent-badge badge-credit">+R$ {{ ent.adiantamento_fornecedor|floatformat:2 }}</span>
+        {% elif ent.saldo_devedor_fornecedor > 0 %}
+          <span class="ent-badge badge-debt">−R$ {{ ent.saldo_devedor_fornecedor|floatformat:2 }}</span>
+        {% else %}
+          <span class="ent-badge badge-zero">Quitado</span>
+        {% endif %}
+      </div>
+      {% endif %}{% endfor %}
+    </div>
+
+    <!-- Formulário de Pagamento -->
+    <form id="form-pagamento" onsubmit="registrarPagamento(event)"
+      style="display:none; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:1rem;">
+      <input type="hidden" id="pag-id-entidade">
+      <div id="pag-nome" style="font-weight:800; color:var(--brand-blue-dark); font-size:1rem; margin-bottom:0.25rem;"></div>
+      <div id="pag-saldo" style="font-size:0.85rem; margin-bottom:0.75rem; color:#475569;"></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.75rem;">
+        <div>
+          <label style="font-size:0.8rem; font-weight:700; color:#64748b; display:block; margin-bottom:0.3rem;">Forma</label>
+          <select id="pag-forma" class="form-control" style="border-radius:6px; padding:0.5rem; font-size:0.9rem; height:auto;" required>
+            {% for f in formas_pagamento %}
+            <option value="{{ f.id }}">{{ f.descricao }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label style="font-size:0.8rem; font-weight:700; color:#64748b; display:block; margin-bottom:0.3rem;">Valor (R$)</label>
+          <input type="number" id="pag-valor" step="0.01" min="0.01" class="input-field"
+            style="border-radius:6px; padding:0.5rem; font-size:0.9rem; width:100%;" placeholder="0,00" required>
+        </div>
+      </div>
+      <button type="submit" class="btn btn-emerald" style="width:100%; font-weight:700; border-radius:6px;">
+        ✅ Processar Liquidação FIFO
+      </button>
+    </form>
+  </div>
+
+</div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# SEÇÃO 3 · Relatório Contábil por Entidade                      #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="fin-card" style="margin-bottom:1.5rem;">
+  <div class="fin-card-header" style="margin-bottom:1rem;">
+    <div>
+      <h3 class="fin-title">📋 Relatório Contábil por Entidade</h3>
+      <p class="fin-subtitle">Posição financeira consolidada de cada cliente e fornecedor</p>
+    </div>
+    <input type="text" id="search-entidades" placeholder="🔍 Filtrar entidade..."
+      style="padding:0.5rem 0.75rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.85rem; width:220px; background:#f8fafc;"
+      oninput="filtrarEntidades()">
+  </div>
+  <div class="table-container" style="max-height:320px; overflow-y:auto;">
+    <table class="table-custom" id="tabela-entidades">
+      <thead style="position:sticky; top:0; background:white; z-index:1;">
+        <tr>
+          <th>Entidade</th>
+          <th>Tipo</th>
+          <th style="color:#10b981;">Saldo a Receber</th>
+          <th style="color:#ef4444;">Saldo a Pagar</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for ent in relatorio_entidades %}
+        <tr class="ent-row">
+          <td><strong>{{ ent.nome }}</strong></td>
+          <td>
+            {% if ent.is_cliente and ent.is_fornecedor %}
+              <span class="type-badge type-both">Cliente/Forn.</span>
+            {% elif ent.is_cliente %}
+              <span class="type-badge type-cliente">Cliente</span>
+            {% else %}
+              <span class="type-badge type-fornecedor">Fornecedor</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if ent.saldo_devedor_cliente > 0 %}
+              <span style="color:#ef4444; font-weight:700;">R$ {{ ent.saldo_devedor_cliente|floatformat:2 }}</span>
+            {% elif ent.adiantamento_cliente > 0 %}
+              <span style="color:#3b82f6; font-weight:700;">+R$ {{ ent.adiantamento_cliente|floatformat:2 }}</span>
+            {% else %}
+              <span style="color:#10b981;">Quitado</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if ent.saldo_devedor_fornecedor > 0 %}
+              <span style="color:#ef4444; font-weight:700;">R$ {{ ent.saldo_devedor_fornecedor|floatformat:2 }}</span>
+            {% elif ent.adiantamento_fornecedor > 0 %}
+              <span style="color:#3b82f6; font-weight:700;">+R$ {{ ent.adiantamento_fornecedor|floatformat:2 }}</span>
+            {% else %}
+              <span style="color:#10b981;">Quitado</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if ent.saldo_devedor_cliente > 0 or ent.saldo_devedor_fornecedor > 0 %}
+              <span class="status-badge status-open">EM ABERTO</span>
+            {% elif ent.adiantamento_cliente > 0 or ent.adiantamento_fornecedor > 0 %}
+              <span class="status-badge status-credit">CRÉDITO</span>
+            {% else %}
+              <span class="status-badge status-ok">QUITADO</span>
+            {% endif %}
+          </td>
+          <td>
+            <button onclick="abrirExtrato({{ ent.id_entidade }}, '{{ ent.nome }}')"
+              style="background:var(--brand-blue); color:white; border:none; border-radius:4px;
+                     padding:0.3rem 0.7rem; font-size:0.78rem; cursor:pointer; font-weight:600;">
+              Ver Extrato
             </button>
-        </form>
-    </div>
-
-    <!-- Painel de Rastreabilidade Contábil & Entidades -->
-    <div class="metric-card">
-        <h3 style="margin-bottom: 1rem; color: var(--brand-blue-dark);">🔍 Painel de Rastreabilidade Contábil por Entidade</h3>
-
-        <div class="table-container" style="max-height: 440px; overflow-y: auto;">
-            <table class="table-custom">
-                <thead>
-                    <tr>
-                        <th>Entidade ID</th>
-                        <th>Titular</th>
-                        <th>Tipo</th>
-                        <th>Status Contábil</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for e in entidades %}
-                    <tr>
-                        <td>#{{ e.id_entidade }}</td>
-                        <td><strong>{{ e.pessoa_nome|default:e.empresa_nome }}</strong></td>
-                        <td><span class="badge badge-blue">{{ e.tipo_entidade }}</span></td>
-                        <td>
-                            {% if e.is_cliente %}
-                            <span class="badge badge-green-status">Cliente Ativo</span>
-                            {% endif %}
-                            {% if e.is_fornecedor %}
-                            <span class="badge badge-amber-status">Fornecedor Ativo</span>
-                            {% endif %}
-                        </td>
-                    </tr>
-                    {% empty %}
-                    <tr>
-                        <td colspan="4" style="text-align: center; color: var(--text-muted);">Nenhuma entidade cadastrada...</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6" style="text-align:center; color:#94a3b8; padding:2rem;">Nenhuma entidade cadastrada.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# MODAL 1 · Fluxo de Caixa                                       #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div id="modal-fluxo" class="modal-overlay">
+  <div class="modal-box" style="max-width:860px; width:95%; border-radius:12px; overflow:hidden;">
+    <div class="modal-hdr">
+      <div>
+        <h2 style="margin:0; font-size:1.3rem;">🏦 Fluxo de Caixa — Histórico Completo</h2>
+        <p style="margin:0.25rem 0 0; font-size:0.85rem; opacity:0.8;">Todas as notas e seus status de pagamento</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:0.75rem;">
+        <!-- Filtro de tipo -->
+        <select id="filtro-tipo-fluxo" onchange="filtrarFluxo()"
+          style="background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); color:white;
+                 border-radius:6px; padding:0.4rem 0.75rem; font-size:0.85rem; cursor:pointer;">
+          <option value="all">Todos os tipos</option>
+          <option value="1">🔴 Compras</option>
+          <option value="2">🟢 Vendas</option>
+          <option value="3">🔵 Devoluções</option>
+          <option value="4">🟡 Perdas</option>
+          <option value="5">⚪ Compensações</option>
+        </select>
+        <button onclick="fecharModal('modal-fluxo')"
+          style="background:rgba(255,255,255,0.2); border:none; color:white;
+                 width:32px; height:32px; border-radius:50%; cursor:pointer; font-size:1.1rem;
+                 display:flex; align-items:center; justify-content:center;">×</button>
+      </div>
+    </div>
+    <div style="padding:1rem 1.5rem; background:#f8fafc; max-height:500px; overflow-y:auto;">
+      <table class="table-custom" style="font-size:0.875rem;">
+        <thead style="position:sticky; top:0; background:white; z-index:1;">
+          <tr>
+            <th>Data</th><th>Tipo</th><th>Entidade</th><th>Nota #</th><th>Total</th><th>Status</th><th>Recibo</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-fluxo">
+          {% for mov in movimentacoes %}
+          <tr class="mov-row" data-tipo="{{ mov.tipo_nota_id }}">
+            <td style="white-space:nowrap;">{{ mov.data }}</td>
+            <td>
+              {% if mov.tipo_nota_id == 1 %}<span class="badge" style="background:#fef2f2;color:#ef4444;border:1px solid #fecaca;">COMPRA</span>
+              {% elif mov.tipo_nota_id == 2 %}<span class="badge" style="background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;">VENDA</span>
+              {% elif mov.tipo_nota_id == 3 %}<span class="badge" style="background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;">DEVOLUÇÃO</span>
+              {% elif mov.tipo_nota_id == 4 %}<span class="badge" style="background:#fffbeb;color:#d97706;border:1px solid #fde68a;">PERDA</span>
+              {% else %}<span class="badge" style="background:#f8fafc;color:#64748b;border:1px solid #cbd5e1;">{{ mov.tipo_nota_str }}</span>
+              {% endif %}
+            </td>
+            <td><strong>{{ mov.entidade_nome }}</strong><br><small style="color:#94a3b8;">ID {{ mov.id_entidade }}</small></td>
+            <td><strong>#{{ mov.id_nota }}</strong></td>
+            <td style="font-weight:700;">R$ {{ mov.valor_total|floatformat:2 }}</td>
+            <td>
+              {% if mov.status_pagamento == "PAGO" %}<span class="badge" style="background:#f0fdf4;color:#16a34a;">PAGO</span>
+              {% elif mov.status_pagamento == "PARCIAL" %}<span class="badge" style="background:#fffbeb;color:#d97706;">PARCIAL</span>
+              {% else %}<span class="badge" style="background:#fef2f2;color:#ef4444;">ABERTO</span>
+              {% endif %}
+            </td>
+            <td>
+              <button onclick="abrirRecibo({{ mov.id_nota }})"
+                style="background:var(--brand-blue);color:white;border:none;padding:0.3rem 0.6rem;border-radius:4px;font-size:0.75rem;cursor:pointer;font-weight:600;">
+                Ver
+              </button>
+            </td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:2rem;">Nenhuma movimentação registrada.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div style="padding:0.75rem 1.5rem; background:white; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end;">
+      <button onclick="fecharModal('modal-fluxo')" class="btn" style="background:#e2e8f0;color:#334155;">Fechar</button>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# MODAL 2 · Recibo de Nota                                       #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div id="modal-recibo" class="modal-overlay">
+  <div class="modal-box" style="max-width:600px; width:92%; border-radius:12px; overflow:hidden;">
+    <div class="modal-hdr">
+      <h2 style="margin:0; font-size:1.2rem;">🧾 Recibo Contábil</h2>
+      <button onclick="fecharModal('modal-recibo')"
+        style="background:rgba(255,255,255,0.2);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+    <div id="recibo-conteudo" style="padding:1.5rem; background:#f8fafc; min-height:180px;">
+      <div style="text-align:center;color:#64748b;margin-top:2rem;">Carregando...</div>
+    </div>
+    <div style="padding:0.75rem 1.5rem; background:white; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end;">
+      <button onclick="fecharModal('modal-recibo')" class="btn" style="background:#e2e8f0;color:#334155;">Fechar</button>
+    </div>
+  </div>
+</div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# MODAL 3 · Extrato da Entidade                                  #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div id="modal-extrato" class="modal-overlay">
+  <div class="modal-box" style="max-width:640px; width:92%; border-radius:12px; overflow:hidden;">
+    <div class="modal-hdr">
+      <div>
+        <h2 style="margin:0; font-size:1.2rem;">📁 Extrato da Entidade</h2>
+        <p id="extrato-nome-titulo" style="margin:0.2rem 0 0; font-size:0.85rem; opacity:0.8;"></p>
+      </div>
+      <button onclick="fecharModal('modal-extrato')"
+        style="background:rgba(255,255,255,0.2);border:none;color:white;width:32px;height:32px;border-radius:50%;cursor:pointer;font-size:1.1rem;display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+    <div id="extrato-conteudo" style="padding:1.5rem; background:#f8fafc; max-height:480px; overflow-y:auto;">
+      <div style="text-align:center;color:#64748b;">Carregando extrato...</div>
+    </div>
+    <div style="padding:0.75rem 1.5rem; background:white; border-top:1px solid #e2e8f0; display:flex; justify-content:flex-end;">
+      <button onclick="fecharModal('modal-extrato')" class="btn" style="background:#e2e8f0;color:#334155;">Fechar</button>
+    </div>
+  </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// ─── Dados do gráfico ───────────────────────────────────────────
+const DADOS_GRAFICO = JSON.parse('{{ grafico_json|safe }}');
+let currentChart = null;
+
+function renderGrafico(dados) {
+    const ctx = document.getElementById('chartLucratividade').getContext('2d');
+    if (currentChart) currentChart.destroy();
+
+    const labels = dados.map(d => {
+        const [y, m, dia] = (d.dia || '').split('-');
+        return `${dia||''}/${m||''}`;
+    });
+
+    currentChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [
+                { label: 'Vendas',     data: dados.map(d => d.vendas),     backgroundColor: 'rgba(16,185,129,0.7)',  borderColor: '#10b981', borderWidth: 1.5, borderRadius: 3, order: 2 },
+                { label: 'Custo',      data: dados.map(d => d.compras),    backgroundColor: 'rgba(239,68,68,0.5)',   borderColor: '#ef4444', borderWidth: 1.5, borderRadius: 3, order: 2 },
+                { label: 'Lucro',      data: dados.map(d => d.lucro),      type: 'line', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2.5, tension: 0.35, fill: true, pointRadius: 3, order: 1 },
+                { label: 'Perdas',     data: dados.map(d => d.perdas),     backgroundColor: 'rgba(245,158,11,0.6)',  borderColor: '#f59e0b', borderWidth: 1.5, borderRadius: 3, order: 2 },
+                { label: 'Devol.',     data: dados.map(d => d.devolucoes), backgroundColor: 'rgba(139,92,246,0.5)', borderColor: '#8b5cf6', borderWidth: 1.5, borderRadius: 3, order: 2 },
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: ctx => `${ctx.dataset.label}: R$ ${ctx.parsed.y.toFixed(2)}`
+                    }
+                }
+            },
+            scales: {
+                x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 }, maxRotation: 45 } },
+                y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.06)' },
+                     ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR'), font: { size: 11 } } }
+            }
+        }
+    });
+}
+
+function filtrarDias(days) {
+    let dados = DADOS_GRAFICO;
+    if (days !== 'all') {
+        const n = parseInt(days);
+        dados = dados.slice(-n);
+    }
+    renderGrafico(dados);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    renderGrafico(DADOS_GRAFICO);
+    document.querySelectorAll('#chart-filters-fin .filter-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('#chart-filters-fin .filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            filtrarDias(this.dataset.days);
+        });
+    });
+});
+
+// ─── Abas Clientes / Fornecedores ───────────────────────────────
+function showTab(tab) {
+    const isCli = tab === 'clientes';
+    document.getElementById('tab-clientes').style.display = isCli ? 'flex' : 'none';
+    document.getElementById('tab-fornecedores').style.display = isCli ? 'none' : 'flex';
+    document.getElementById('btn-tab-cli').style.background = isCli ? 'var(--brand-blue)' : '#e2e8f0';
+    document.getElementById('btn-tab-cli').style.color = isCli ? 'white' : '#64748b';
+    document.getElementById('btn-tab-forn').style.background = isCli ? '#e2e8f0' : 'var(--brand-blue)';
+    document.getElementById('btn-tab-forn').style.color = isCli ? '#64748b' : 'white';
+    document.getElementById('form-pagamento').style.display = 'none';
+    document.querySelectorAll('.ent-item').forEach(e => { e.style.background=''; e.style.borderColor=''; });
+}
+
+// ─── Selecionar Entidade ─────────────────────────────────────────
+function selecionarEntidade(id, nome, devendo, adiantamento) {
+    document.getElementById('pag-id-entidade').value = id;
+    document.getElementById('pag-nome').textContent = nome;
+    const saldo = parseFloat(devendo) || 0;
+    const adiant = parseFloat(adiantamento) || 0;
+    let saldoHtml = '';
+    if (adiant > 0) saldoHtml = `<span style="color:#3b82f6;font-weight:700;">Crédito: R$ ${adiant.toFixed(2)}</span>`;
+    else if (saldo > 0) saldoHtml = `<span style="color:#ef4444;font-weight:700;">Dívida: R$ ${saldo.toFixed(2)}</span>`;
+    else saldoHtml = `<span style="color:#10b981;font-weight:700;">Sem pendência</span>`;
+    document.getElementById('pag-saldo').innerHTML = saldoHtml;
+    document.getElementById('form-pagamento').style.display = 'block';
+
+    document.querySelectorAll('.ent-item').forEach(e => { e.style.background=''; e.style.borderColor=''; });
+    event.currentTarget.style.background = '#eff6ff';
+    event.currentTarget.style.borderColor = '#3b82f6';
+}
+
+// ─── Registrar Pagamento ─────────────────────────────────────────
 async function registrarPagamento(e) {
     e.preventDefault();
-
-    const idNota = parseInt(document.getElementById('pag-id-nota').value);
-    const formaId = parseInt(document.getElementById('pag-forma').value);
-    const valor = parseFloat(document.getElementById('pag-valor').value);
-
     const payload = {
-        id_fluxo_nota: idNota,
-        id_forma_pagamento: formaId,
-        valor: valor,
-        data: new Date().toISOString().split('T')[0]
+        id_entidade: parseInt(document.getElementById('pag-id-entidade').value),
+        id_forma_pagamento: parseInt(document.getElementById('pag-forma').value),
+        valor: parseFloat(document.getElementById('pag-valor').value)
     };
-
     try {
-        const resp = await fetch('/api/registrar-pagamento/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+        const r = await fetch('/api/registrar-pagamento-entidade/', {
+            method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload)
         });
-        const res = await resp.json();
+        const res = await r.json();
+        if (res.sucesso) { alert(`✅ ${res.mensagem}`); location.reload(); }
+        else alert(`❌ ${res.mensagem}`);
+    } catch(err) { alert(`Erro: ${err}`); }
+}
 
-        if (res.sucesso) {
-            alert(`✅ ${res.mensagem}`);
-            window.location.reload();
-        } else {
-            alert(`❌ Erro: ${res.mensagem}`);
-        }
-    } catch (err) {
-        alert(`❌ Erro de comunicação: ${err}`);
+// ─── Modais ──────────────────────────────────────────────────────
+function abrirFluxoCaixa() { document.getElementById('modal-fluxo').classList.add('active'); }
+function fecharModal(id) { document.getElementById(id).classList.remove('active'); }
+
+function filtrarFluxo() {
+    const val = document.getElementById('filtro-tipo-fluxo').value;
+    document.querySelectorAll('#tbody-fluxo .mov-row').forEach(row => {
+        row.style.display = (val === 'all' || row.dataset.tipo === val) ? '' : 'none';
+    });
+}
+
+async function abrirRecibo(idNota) {
+    fecharModal('modal-fluxo');
+    document.getElementById('modal-recibo').classList.add('active');
+    const c = document.getElementById('recibo-conteudo');
+    c.innerHTML = '<div style="text-align:center;color:#64748b;margin-top:2rem;">Carregando...</div>';
+    try {
+        const r = await fetch(`/api/detalhes-pagamento/${idNota}/`);
+        const json = await r.json();
+        if (!json.sucesso) { c.innerHTML = `<div style="color:#ef4444;">Erro: ${json.erro}</div>`; return; }
+        const d = json.dados;
+        const tipos = {1:'COMPRA',2:'VENDA',3:'DEVOLUÇÃO',4:'PERDA',5:'COMPENSAÇÃO'};
+        let totalPago = 0;
+        let pags = d.pagamentos.map(p => {
+            totalPago += p.valor;
+            return `<li style="display:flex;justify-content:space-between;align-items:center;background:#f8fafc;padding:0.6rem 1rem;border-radius:6px;border:1px solid #e2e8f0;margin-bottom:0.4rem;">
+                <div><strong style="color:#334155;">${p.forma_pagamento_desc}</strong><br><small style="color:#94a3b8;">${p.data_pagamento}</small></div>
+                <strong style="color:#10b981;">R$ ${p.valor.toFixed(2)}</strong>
+            </li>`;
+        }).join('');
+        c.innerHTML = `
+        <div style="background:white;border-radius:8px;border:1px solid #e2e8f0;padding:1.25rem;margin-bottom:1rem;">
+            <div style="display:flex;justify-content:space-between;border-bottom:2px dashed #e2e8f0;padding-bottom:0.75rem;margin-bottom:0.75rem;">
+                <div><div style="font-size:0.75rem;color:#64748b;font-weight:700;text-transform:uppercase;">Tipo</div>
+                <div style="font-size:1.2rem;font-weight:800;color:var(--brand-blue-dark);">${tipos[d.nota_detalhes?.tipo_id] || d.nota_detalhes?.tipo || 'N/A'}</div></div>
+                <div style="text-align:right;"><div style="font-size:0.75rem;color:#64748b;font-weight:700;text-transform:uppercase;">Nota</div>
+                <div style="font-size:1.2rem;font-weight:800;color:#334155;">#${d.id_fluxo_nota}</div></div>
+            </div>
+            <div style="font-size:0.8rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:0.5rem;">Pagamentos</div>
+            <ul style="list-style:none;padding:0;margin:0;">${pags || '<li style="color:#ef4444;font-size:0.9rem;">Nenhum pagamento registrado.</li>'}</ul>
+            <div style="display:flex;justify-content:space-between;align-items:center;background:#f1f5f9;padding:0.75rem 1rem;border-radius:6px;margin-top:0.75rem;">
+                <span style="font-weight:700;color:#475569;">TOTAL LIQUIDADO</span>
+                <strong style="font-size:1.1rem;color:var(--brand-blue-dark);">R$ ${totalPago.toFixed(2)}</strong>
+            </div>
+        </div>`;
+    } catch(err) {
+        c.innerHTML = `<div style="color:#ef4444;">Erro de comunicação: ${err}</div>`;
     }
 }
+
+async function abrirExtrato(idEntidade, nome) {
+    document.getElementById('extrato-nome-titulo').textContent = nome;
+    document.getElementById('modal-extrato').classList.add('active');
+    const c = document.getElementById('extrato-conteudo');
+    c.innerHTML = '<div style="text-align:center;color:#64748b;padding:2rem;">Carregando extrato...</div>';
+    try {
+        const r = await fetch(`/api/extrato-entidade/${idEntidade}/`);
+        const json = await r.json();
+        if (!json.sucesso) { c.innerHTML = `<div style="color:#ef4444;">Erro: ${json.erro}</div>`; return; }
+        const res = json.resumo;
+        const fmt = v => `R$ ${parseFloat(v||0).toFixed(2)}`;
+        const pags = (json.historico_pagamentos || []).slice(0, 10).map(p =>
+            `<tr><td>#${p.id_fluxo_nota}</td><td>${p.tipo_nota||'–'}</td><td>${p.forma_pagamento||'–'}</td>
+             <td style="color:#10b981;font-weight:700;">${fmt(p.valor)}</td><td>${p.data_pagamento||'–'}</td></tr>`
+        ).join('');
+        c.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem;margin-bottom:1.25rem;">
+            ${[
+                ['💰 Vendas', fmt(res.total_vendas), '#10b981'],
+                ['📦 Compras', fmt(res.total_compras), '#ef4444'],
+                ['📈 Lucro', fmt(res.lucro_bruto_estimado), '#3b82f6'],
+                ['✅ Recebido', fmt(res.pagamentos_recebidos), '#10b981'],
+                ['💸 Pago', fmt(res.pagamentos_efetuados), '#ef4444'],
+                ['🏦 Caixa', fmt(res.saldo_liquido_caixa), parseFloat(res.saldo_liquido_caixa||0)>=0?'#10b981':'#ef4444'],
+            ].map(([label, val, color]) => `
+                <div style="background:white;border:1px solid #e2e8f0;border-radius:8px;padding:0.75rem;text-align:center;">
+                    <div style="font-size:0.75rem;color:#64748b;font-weight:700;margin-bottom:0.25rem;">${label}</div>
+                    <div style="font-size:1.05rem;font-weight:800;color:${color};">${val}</div>
+                </div>`).join('')}
+        </div>
+        ${pags ? `
+        <div style="font-size:0.8rem;font-weight:700;color:#475569;margin-bottom:0.5rem;">Últimos Pagamentos</div>
+        <div style="overflow-x:auto;">
+        <table style="width:100%;font-size:0.8rem;border-collapse:collapse;">
+            <thead><tr style="background:#f1f5f9;">
+                <th style="padding:0.5rem;text-align:left;">Nota</th>
+                <th style="padding:0.5rem;text-align:left;">Tipo</th>
+                <th style="padding:0.5rem;text-align:left;">Forma</th>
+                <th style="padding:0.5rem;text-align:left;">Valor</th>
+                <th style="padding:0.5rem;text-align:left;">Data</th>
+            </tr></thead>
+            <tbody>${pags}</tbody>
+        </table></div>` : '<div style="color:#94a3b8;text-align:center;">Sem histórico de pagamentos.</div>'}`;
+    } catch(err) {
+        c.innerHTML = `<div style="color:#ef4444;">Erro: ${err}</div>`;
+    }
+}
+
+// ─── Filtrar tabela de entidades ─────────────────────────────────
+function filtrarEntidades() {
+    const termo = document.getElementById('search-entidades').value.toLowerCase();
+    document.querySelectorAll('#tabela-entidades .ent-row').forEach(row => {
+        row.style.display = row.textContent.toLowerCase().includes(termo) ? '' : 'none';
+    });
+}
 </script>
+
+<style>
+/* ── KPI Cards ─────────────────────────────────────────────── */
+.kpi-card {
+    padding: 1rem 1.1rem; border-radius: 10px; position: relative;
+    display: flex; flex-direction: column; gap: 0.25rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07); transition: transform 0.15s;
+}
+.kpi-card:hover { transform: translateY(-2px); }
+.kpi-clickable { cursor: pointer; }
+.kpi-icon { font-size: 1.3rem; line-height: 1; }
+.kpi-label { font-size: 0.68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; opacity: 0.75; }
+.kpi-value { font-size: 1.15rem; font-weight: 800; line-height: 1.2; }
+.kpi-sub { font-size: 0.7rem; opacity: 0.65; }
+
+.kpi-green   { background: linear-gradient(135deg,#f0fdf4,#dcfce7); color: #166534; }
+.kpi-red     { background: linear-gradient(135deg,#fff5f5,#fee2e2); color: #991b1b; }
+.kpi-blue    { background: linear-gradient(135deg,#eff6ff,#dbeafe); color: #1e40af; }
+.kpi-amber   { background: linear-gradient(135deg,#fffbeb,#fef3c7); color: #92400e; }
+.kpi-indigo  { background: linear-gradient(135deg,#f5f3ff,#ede9fe); color: #4c1d95; }
+.kpi-emerald { background: linear-gradient(135deg,#ecfdf5,#a7f3d0); color: #065f46; }
+.kpi-danger  { background: linear-gradient(135deg,#fff1f2,#ffe4e6); color: #9f1239; }
+
+/* ── Fin Cards ────────────────────────────────────────────── */
+.fin-card { background: white; border-radius: 10px; padding: 1.25rem 1.5rem; box-shadow: 0 2px 12px rgba(0,0,0,0.07); }
+.fin-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.75rem; }
+.fin-title { font-size: 1rem; font-weight: 800; color: var(--brand-blue-dark); margin: 0; }
+.fin-subtitle { font-size: 0.8rem; color: #64748b; margin: 0.15rem 0 0; }
+
+/* ── Chart Legend ────────────────────────────────────────── */
+.chart-legend { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; font-size: 0.75rem; color: #475569; }
+.leg-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+/* ── Entidade Items ──────────────────────────────────────── */
+.ent-item {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0.6rem 0.75rem; border: 1px solid #e2e8f0; border-radius: 6px;
+    cursor: pointer; transition: all 0.15s; font-size: 0.88rem;
+}
+.ent-item:hover { background: #eff6ff; border-color: #93c5fd; }
+.ent-name { font-weight: 600; color: #1e293b; }
+.ent-badge { font-size: 0.75rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; }
+.badge-credit { background: #dbeafe; color: #1d4ed8; }
+.badge-debt   { background: #fee2e2; color: #b91c1c; }
+.badge-zero   { background: #dcfce7; color: #166534; }
+
+/* ── Type / Status Badges ───────────────────────────────── */
+.type-badge { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; }
+.type-cliente    { background: #dbeafe; color: #1e40af; }
+.type-fornecedor { background: #fef3c7; color: #92400e; }
+.type-both       { background: #ede9fe; color: #5b21b6; }
+
+.status-badge { font-size: 0.72rem; font-weight: 700; padding: 0.2rem 0.5rem; border-radius: 4px; }
+.status-open   { background: #fee2e2; color: #b91c1c; }
+.status-credit { background: #dbeafe; color: #1e40af; }
+.status-ok     { background: #dcfce7; color: #166534; }
+
+/* ── Modal Header ───────────────────────────────────────── */
+.modal-hdr {
+    background: linear-gradient(135deg, var(--brand-blue-dark), var(--brand-blue));
+    color: white; padding: 1.25rem 1.5rem;
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+}
+</style>
 {% endblock %}

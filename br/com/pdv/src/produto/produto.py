@@ -28,7 +28,7 @@ class Produto:
         
         #propriedade de identificação desse produto e sua caracteristicas
         self.__ID = id;
-        self.__N = nome;
+        self.__N = nome.upper().strip();
         self.__UM = unidadeMedida;
         self.__D = diasDuraveis;
 
