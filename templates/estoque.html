@@ -58,16 +58,29 @@
         <div style="padding: 1.25rem; background: rgba(255,255,255,0.7); border-radius: 12px; border: 1px solid #e0f2fe; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
             <h4 style="font-size: 0.85rem; color: #0284c7; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Condição Climática Atual</h4>
             <div style="display: flex; align-items: center; gap: 1.25rem;">
-                <div style="font-size: 3.2rem; line-height: 1; text-shadow: 0 4px 10px rgba(0,0,0,0.1);">⛅</div>
+                <div style="font-size: 3.2rem; line-height: 1; text-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+                    {% if sazonal.vai_chover == 'Sim' %}🌧️
+                    {% elif sazonal.indicador_clima == 'QUENTE' %}☀️
+                    {% elif sazonal.indicador_clima == 'FRIO' %}❄️
+                    {% else %}⛅{% endif %}
+                </div>
                 <div>
-                    <div style="font-size: 2.2rem; font-weight: 800; color: var(--text-main); letter-spacing: -1px;">24°C</div>
-                    <div style="font-size: 0.95rem; color: var(--text-muted); font-weight: 500;">Parcialmente Nublado</div>
+                    <div style="font-size: 2.2rem; font-weight: 800; color: var(--text-main); letter-spacing: -1px;">{{ sazonal.temperatura_atual }}°C</div>
+                    <div style="font-size: 0.95rem; color: var(--text-muted); font-weight: 500;">{{ sazonal.clima_descricao }}</div>
                 </div>
             </div>
             <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px dashed #bae6fd;">
                 <p style="font-size: 0.88rem; color: var(--text-muted); margin: 0;">
-                    <strong style="color: var(--brand-blue-dark);">Amanhã:</strong> 🌧️ Chuva forte à tarde.<br>
-                    <span style="color: var(--rose);">Probabilidade de queda nas vendas de balcão.</span> Sugerimos focar em delivery.
+                    <strong style="color: var(--brand-blue-dark);">Recomendação para hoje:</strong><br>
+                    {% if sazonal.vai_chover == 'Sim' %}
+                    <span style="color: var(--rose);">Probabilidade de chuva. Queda nas vendas de balcão.</span> Sugerimos focar em delivery.
+                    {% elif sazonal.indicador_clima == 'QUENTE' %}
+                    <span style="color: #ea580c;">Clima Quente.</span> Produtos frios/refrescantes terão alta demanda hoje.
+                    {% elif sazonal.indicador_clima == 'FRIO' %}
+                    <span style="color: #0284c7;">Clima Frio.</span> Prepare produtos reconfortantes para aumentar o ticket médio.
+                    {% else %}
+                    <span style="color: #16a34a;">Clima Ameno.</span> Cenário ideal para fluxo constante no salão e vitrine.
+                    {% endif %}
                 </p>
             </div>
         </div>
@@ -76,18 +89,18 @@
         <div style="padding: 1.25rem; background: rgba(255,255,255,0.7); border-radius: 12px; border: 1px solid #e0f2fe; box-shadow: 0 4px 12px rgba(0,0,0,0.02);">
             <h4 style="font-size: 0.85rem; color: #0284c7; margin-bottom: 1rem; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700;">Próximos Eventos</h4>
             <ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 1rem;">
-                <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
-                    <span><strong style="color: var(--text-main);">Fim de Mês (Pagamentos)</strong> 💰</span>
-                    <span class="badge badge-green-status" style="font-size: 0.75rem;">Em 2 dias</span>
-                </li>
-                <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
-                    <span><strong style="color: var(--text-main);">Dia dos Pais</strong> 🎁</span>
-                    <span class="badge badge-amber-status" style="font-size: 0.75rem;">Em 12 dias</span>
-                </li>
-                <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem;">
-                    <span><strong style="color: var(--text-main);">Feriado da Independência</strong> 🇧🇷</span>
-                    <span class="badge" style="font-size: 0.75rem; background:#f1f5f9; color:#64748b;">Em 40 dias</span>
-                </li>
+                {% if sazonal.detalhes_eventos %}
+                    {% for evento in sazonal.detalhes_eventos|slice:":4" %}
+                    <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
+                        <span><strong style="color: var(--text-main);">{{ evento }}</strong></span>
+                        <span class="badge badge-green-status" style="font-size: 0.75rem;">Confirmado</span>
+                    </li>
+                    {% endfor %}
+                {% else %}
+                    <li style="display: flex; justify-content: space-between; align-items: center; font-size: 0.95rem; padding-bottom: 0.75rem; border-bottom: 1px solid #f1f5f9;">
+                        <span>Nenhum evento registrado.</span>
+                    </li>
+                {% endif %}
             </ul>
         </div>
     </div>

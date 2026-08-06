@@ -24,7 +24,9 @@ MAP_PROD = {
 MAP_FORNECEDORES = {
     'Ovos de ouro': 4,
     'Gema De Ouro': 5,
-    'Granja Marinho': 6
+    'Granja Marinho': 6,
+    'Granja 2 irmãos': 1245,
+    'Deus é fiel': 1243
 }
 
 def parse_money(val):
@@ -71,8 +73,8 @@ def processar_excel():
     InventoryManager.carregarTudo()
     
     # 2. Le a planilha
-    print("[1/5] Carregando temp_gestao.xlsm...")
-    df = pd.read_excel('temp_gestao.xlsm', sheet_name='estoque', skiprows=13)
+    print("[1/5] Carregando testesDadosReais18M.xlsx...")
+    df = pd.read_excel('testesDadosReais18M.xlsx')
     
     compras_dict = defaultdict(list)
     operacoes = []

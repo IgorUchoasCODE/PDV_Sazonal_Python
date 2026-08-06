@@ -104,15 +104,15 @@
         </button>
 
         <button class="shortcut-btn" data-shortcut-river="CHEIA" style="background: rgba(14, 165, 233, 0.12); color: #0369a1; border: 1px solid rgba(14, 165, 233, 0.3); border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            🌊 Época de Cheia do Rio
+            🌊 Época de Cheia do Rio ({{ mes_cheia_label|default:"N/A" }})
         </button>
 
         <button class="shortcut-btn" data-shortcut-river="SECA" style="background: rgba(217, 119, 6, 0.12); color: #78350f; border: 1px solid rgba(217, 119, 6, 0.3); border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            🍂 Época de Seca do Rio
+            🍂 Época de Seca do Rio ({{ mes_seca_label|default:"N/A" }})
         </button>
 
         <button class="shortcut-btn" data-shortcut-rain="CHUVOSO" style="background: rgba(99, 102, 241, 0.12); color: #3730a3; border: 1px solid rgba(99, 102, 241, 0.3); border-radius: 20px; padding: 4px 10px; font-size: 0.78rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
-            🌧️ Semanas Chuvosas
+            🌧️ Semanas Chuvosas ({{ mes_chuva_label|default:"N/A" }})
         </button>
     </div>
 
@@ -482,40 +482,70 @@
         const shortcutBtns = document.querySelectorAll('.shortcut-btn');
 
         let activeDays = 'all';
+        let currentEpicenterIndex = -1;
 
         function applyCombinedFilters() {
             let filtered = [...dadosBrutos];
 
-            // 1. Filtro por Mês
-            const selectedMonth = selectMonth ? selectMonth.value : 'all';
-            if (selectedMonth !== 'all') {
-                filtered = filtered.filter(d => d.mes_ano === selectedMonth);
-            }
+            // Se temos um epicentro e estamos filtrando por dias, centralizamos o gráfico
+            if (currentEpicenterIndex !== -1 && activeDays !== 'all') {
+                if (selectMonth) selectMonth.value = 'all';
+                if (selectRiver) selectRiver.value = 'all';
+                if (selectRain) selectRain.value = 'all';
 
-            // 2. Filtro por Nível do Rio (Cheia / Seca / Normal)
-            const selectedRiver = selectRiver ? selectRiver.value : 'all';
-            if (selectedRiver !== 'all') {
-                filtered = filtered.filter(d => d.indicador_rio === selectedRiver);
-            }
+                const days = parseInt(activeDays);
+                const half = Math.floor(days / 2);
+                let start = currentEpicenterIndex - half;
+                let end = currentEpicenterIndex + half + (days % 2 !== 0 ? 1 : 0);
+                
+                if (start < 0) {
+                    end += Math.abs(start);
+                    start = 0;
+                }
+                if (end > dadosBrutos.length) {
+                    start -= (end - dadosBrutos.length);
+                    end = dadosBrutos.length;
+                    if (start < 0) start = 0;
+                }
+                filtered = dadosBrutos.slice(start, end);
+            } else {
+                // 1. Filtro por Mês
+                const selectedMonth = selectMonth ? selectMonth.value : 'all';
+                if (selectedMonth !== 'all') {
+                    filtered = filtered.filter(d => d.mes_ano === selectedMonth);
+                }
 
-            // 3. Filtro por Chuva / Precipitação
-            const selectedRain = selectRain ? selectRain.value : 'all';
-            if (selectedRain !== 'all') {
-                filtered = filtered.filter(d => d.indicador_chuva === selectedRain);
-            }
+                // 2. Filtro por Nível do Rio (Cheia / Seca / Normal)
+                const selectedRiver = selectRiver ? selectRiver.value : 'all';
+                if (selectedRiver !== 'all') {
+                    filtered = filtered.filter(d => d.indicador_rio === selectedRiver);
+                }
 
-            // 4. Filtro por Dias
-            if (activeDays !== 'all') {
-                const daysInt = parseInt(activeDays);
-                filtered = filtered.slice(-daysInt);
+                // 3. Filtro por Chuva / Precipitação
+                const selectedRain = selectRain ? selectRain.value : 'all';
+                if (selectedRain !== 'all') {
+                    filtered = filtered.filter(d => d.indicador_chuva === selectedRain);
+                }
+
+                // 4. Filtro por Dias (final do período)
+                if (activeDays !== 'all') {
+                    const daysInt = parseInt(activeDays);
+                    filtered = filtered.slice(-daysInt);
+                }
             }
 
             renderChart(filtered);
         }
 
-        if (selectMonth) selectMonth.addEventListener('change', applyCombinedFilters);
-        if (selectRiver) selectRiver.addEventListener('change', applyCombinedFilters);
-        if (selectRain) selectRain.addEventListener('change', applyCombinedFilters);
+        // Se usar os dropdowns, limpa o epicentro
+        const clearEpicenterAndApply = () => { 
+            currentEpicenterIndex = -1; 
+            applyCombinedFilters(); 
+        };
+
+        if (selectMonth) selectMonth.addEventListener('change', clearEpicenterAndApply);
+        if (selectRiver) selectRiver.addEventListener('change', clearEpicenterAndApply);
+        if (selectRain) selectRain.addEventListener('change', clearEpicenterAndApply);
 
         filterBtns.forEach(btn => {
             btn.addEventListener('click', function() {
@@ -531,29 +561,63 @@
                 const targetMonth = this.getAttribute('data-shortcut-month');
                 const targetRiver = this.getAttribute('data-shortcut-river');
                 const targetRain = this.getAttribute('data-shortcut-rain');
+                
+                const btnText = this.textContent.toLowerCase();
+                const isPico = btnText.includes('pico');
+                const isBaixa = btnText.includes('baixa');
+                const isPerda = btnText.includes('perda');
 
-                filterBtns.forEach(b => b.classList.remove('active'));
-                const btnAll = document.querySelector('#chart-filters .filter-btn[data-days="all"]');
-                if (btnAll) btnAll.classList.add('active');
-                activeDays = 'all';
+                let epicenterIndex = -1;
 
-                if (targetMonth && selectMonth) {
-                    selectMonth.value = targetMonth;
-                    if (selectRiver) selectRiver.value = 'all';
-                    if (selectRain) selectRain.value = 'all';
-                }
-                if (targetRiver && selectRiver) {
-                    selectRiver.value = targetRiver;
-                    if (selectMonth) selectMonth.value = 'all';
-                    if (selectRain) selectRain.value = 'all';
-                }
-                if (targetRain && selectRain) {
-                    selectRain.value = targetRain;
-                    if (selectMonth) selectMonth.value = 'all';
-                    if (selectRiver) selectRiver.value = 'all';
+                if (targetRiver === 'CHEIA') {
+                    let maxRio = -Infinity;
+                    dadosBrutos.forEach((d, i) => { if (d.nivel_rio > maxRio) { maxRio = d.nivel_rio; epicenterIndex = i; } });
+                } else if (targetRiver === 'SECA') {
+                    let minRio = Infinity;
+                    dadosBrutos.forEach((d, i) => { 
+                        if (d.nivel_rio > 0 && d.nivel_rio < minRio) { minRio = d.nivel_rio; epicenterIndex = i; } 
+                    });
+                    if (epicenterIndex === -1) {
+                         dadosBrutos.forEach((d, i) => { if (d.nivel_rio < minRio) { minRio = d.nivel_rio; epicenterIndex = i; } });
+                    }
+                } else if (targetRain === 'CHUVOSO') {
+                    let maxPerda = -Infinity;
+                    dadosBrutos.forEach((d, i) => {
+                        if (d.indicador_chuva === 'CHUVOSO' && d.valor_perda > maxPerda) { maxPerda = d.valor_perda; epicenterIndex = i; }
+                    });
+                    if (epicenterIndex === -1) {
+                        let maxVenda = -Infinity;
+                        dadosBrutos.forEach((d, i) => {
+                            if (d.indicador_chuva === 'CHUVOSO' && d.valor_venda > maxVenda) { maxVenda = d.valor_venda; epicenterIndex = i; }
+                        });
+                    }
+                } else if (targetMonth) {
+                    let bestVal = isBaixa ? Infinity : -Infinity;
+                    dadosBrutos.forEach((d, i) => {
+                        if (d.mes_ano === targetMonth) {
+                            if (isPico && d.valor_venda > bestVal) { bestVal = d.valor_venda; epicenterIndex = i; }
+                            if (isBaixa && d.valor_venda > 0 && d.valor_venda < bestVal) { bestVal = d.valor_venda; epicenterIndex = i; }
+                            if (isPerda && d.valor_perda > bestVal) { bestVal = d.valor_perda; epicenterIndex = i; }
+                        }
+                    });
                 }
 
-                applyCombinedFilters();
+                if (epicenterIndex !== -1) {
+                    currentEpicenterIndex = epicenterIndex;
+                    if (activeDays === 'all') {
+                        activeDays = '30';
+                        filterBtns.forEach(b => b.classList.remove('active'));
+                        const btn30 = document.querySelector('#chart-filters .filter-btn[data-days="30"]');
+                        if (btn30) btn30.classList.add('active');
+                    }
+                    applyCombinedFilters();
+                } else {
+                    currentEpicenterIndex = -1;
+                    if (targetMonth && selectMonth) selectMonth.value = targetMonth;
+                    if (targetRiver && selectRiver) selectRiver.value = targetRiver;
+                    if (targetRain && selectRain) selectRain.value = targetRain;
+                    applyCombinedFilters();
+                }
             });
         });
     });

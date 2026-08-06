@@ -53,6 +53,9 @@ def dashboard_view(request):
         v_venda = row['valor_venda'] or 0
         v_perda = row['valor_perda'] or 0
         
+        ind_rio = row['indicador_rio'] or 'NORMAL'
+        ind_chuva = row['indicador_chuva'] or 'MODERADO'
+
         dados_grafico.append({
             'dia': row['dia'],
             'mes_ano': m_ano,
@@ -62,20 +65,27 @@ def dashboard_view(request):
             'nivel_rio': row['nivel_rio'] or 0,
             'temperatura': row['temperatura'] or 0,
             'clima': row['clima'] or 'AMENO',
-            'indicador_rio': row['indicador_rio'] or 'NORMAL',
-            'indicador_chuva': row['indicador_chuva'] or 'MODERADO'
+            'indicador_rio': ind_rio,
+            'indicador_chuva': ind_chuva
         })
 
         if m_ano:
             if m_ano not in meses_totais:
-                meses_totais[m_ano] = {'vendas': 0.0, 'perdas': 0.0}
+                meses_totais[m_ano] = {'vendas': 0.0, 'perdas': 0.0, 'cheia': 0, 'seca': 0, 'chuva': 0}
             meses_totais[m_ano]['vendas'] += v_venda
             meses_totais[m_ano]['perdas'] += v_perda
+            if ind_rio == 'CHEIA': meses_totais[m_ano]['cheia'] += 1
+            if ind_rio == 'SECA':  meses_totais[m_ano]['seca'] += 1
+            if ind_chuva == 'CHUVOSO': meses_totais[m_ano]['chuva'] += 1
 
     # Identifica atalhos estatísticos
     mes_pico_faturamento = max(meses_totais, key=lambda k: meses_totais[k]['vendas']) if meses_totais else ''
     mes_baixa_faturamento = min(meses_totais, key=lambda k: meses_totais[k]['vendas']) if meses_totais else ''
     mes_maior_perda = max(meses_totais, key=lambda k: meses_totais[k]['perdas']) if meses_totais else ''
+    
+    mes_pico_cheia = max(meses_totais, key=lambda k: meses_totais[k]['cheia']) if meses_totais and any(m['cheia'] > 0 for m in meses_totais.values()) else ''
+    mes_pico_seca = max(meses_totais, key=lambda k: meses_totais[k]['seca']) if meses_totais and any(m['seca'] > 0 for m in meses_totais.values()) else ''
+    mes_pico_chuva = max(meses_totais, key=lambda k: meses_totais[k]['chuva']) if meses_totais and any(m['chuva'] > 0 for m in meses_totais.values()) else ''
 
     def get_mes_nome(m_str):
         if not m_str: return ''
@@ -87,6 +97,10 @@ def dashboard_view(request):
     mes_pico_label = get_mes_nome(mes_pico_faturamento)
     mes_baixa_label = get_mes_nome(mes_baixa_faturamento)
     mes_maior_perda_label = get_mes_nome(mes_maior_perda)
+    
+    mes_cheia_label = get_mes_nome(mes_pico_cheia)
+    mes_seca_label = get_mes_nome(mes_pico_seca)
+    mes_chuva_label = get_mes_nome(mes_pico_chuva)
 
     meses_disponiveis = []
     for m in sorted(meses_totais.keys()):
@@ -248,7 +262,10 @@ def dashboard_view(request):
         'mes_baixa_faturamento': mes_baixa_faturamento,
         'mes_baixa_label': mes_baixa_label,
         'mes_maior_perda': mes_maior_perda,
-        'mes_maior_perda_label': mes_maior_perda_label
+        'mes_maior_perda_label': mes_maior_perda_label,
+        'mes_cheia_label': mes_cheia_label,
+        'mes_seca_label': mes_seca_label,
+        'mes_chuva_label': mes_chuva_label
     })
 
 def relatorios_view(request):
@@ -741,7 +758,86 @@ def fornecedores_view(request):
         'mapa_perdas_json': json.dumps(mapa_perdas)
     })
 def clientes_view(request):
-    return render(request, 'clientes.html', {})
+    from core.helpers import get_clientes
+    from br.com.pdv.src.BDD.bancodb import BancoDB
+    import sqlite3
+    
+    clientes_raw = get_clientes()
+    arvore_clientes = []
+    
+    conn = BancoDB.obter_conexao()
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    
+    for c in clientes_raw:
+        extrato_resumo = c.get('extrato', {}).get('resumo', {})
+        node = {
+            'id': c['id_entidade'],
+            'nome': c.get('pessoa_nome') or c.get('empresa_nome') or f"Cliente {c['id_entidade']}",
+            'resumo': extrato_resumo,
+            'vendas': [],
+            'lista_devolucoes': [],
+            'lista_perdas': []
+        }
+        
+        historico_notas = c.get('extrato', {}).get('historico_notas', [])
+        historico_pagamentos = c.get('extrato', {}).get('historico_pagamentos', [])
+        
+        notas_venda = [n for n in historico_notas if n['id_tipoNota'] == 2]
+        
+        tem_devolucoes_ou_perdas = False
+        for nv in notas_venda:
+            id_venda = nv['id_fluxo_nota']
+            pags = [p for p in historico_pagamentos if p['id_fluxo_nota'] == id_venda]
+            
+            cursor.execute('''
+                SELECT 
+                    f.id_fluxo_nota as id_nota, 
+                    f.data, 
+                    ABS(f.quantidade) as quantidade, 
+                    f.id_tipoNota, 
+                    (ABS(f.quantidade) * f.valorUnidario) as valor,
+                    p.id as id_produto,
+                    p.nome as produto_nome,
+                    f.id_notaOrigem as nota_origem,
+                    fn_origem.data as data_origem
+                FROM fluxoEstoque f
+                LEFT JOIN produto p ON f.id_produto = p.id
+                LEFT JOIN fluxoEstoque fn_origem ON f.id_notaOrigem = fn_origem.id_fluxo_nota AND fn_origem.id_tipoNota = 2
+                WHERE f.id_notaOrigem = ? AND f.id_tipoNota IN (3, 4, 5)
+                GROUP BY f.id, f.id_fluxo_nota
+            ''', (id_venda,))
+            flutuacoes = [dict(row) for row in cursor.fetchall()]
+            
+            for fl in flutuacoes:
+                if hasattr(fl['data'], 'strftime'):
+                    fl['data'] = fl['data'].strftime('%Y-%m-%d')
+                if hasattr(fl.get('data_origem'), 'strftime'):
+                    fl['data_origem'] = fl['data_origem'].strftime('%Y-%m-%d')
+                
+                if fl.get('id_tipoNota') == 3:
+                    tem_devolucoes_ou_perdas = True
+                    node['lista_devolucoes'].append(fl)
+                elif fl.get('id_tipoNota') in (4, 5):
+                    tem_devolucoes_ou_perdas = True
+                    node['lista_perdas'].append(fl)
+            
+            venda_node = {
+                'id_nota': id_venda,
+                'data_vencimento': nv.get('data_vencimento') or 'N/A',
+                'total_nota': nv.get('total_nota', 0),
+                'pagamentos': pags,
+                'flutuacoes': flutuacoes
+            }
+            node['vendas'].append(venda_node)
+            
+        node['tem_devolucoes_ou_perdas'] = tem_devolucoes_ou_perdas
+        arvore_clientes.append(node)
+        
+    return render(request, 'clientes.html', {
+        'arvore_clientes': arvore_clientes,
+        'pagina_atual': 'clientes'
+    })
 def pdv_view(request):
     from core.helpers import pdv_context
     ctx = pdv_context()

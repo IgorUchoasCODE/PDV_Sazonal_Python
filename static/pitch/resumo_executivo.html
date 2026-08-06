@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sazonalizei PDV — Resumo Executivo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      width: 100vw; height: 100vh; overflow: hidden;
+      font-family: 'Inter', sans-serif; color: #fff;
+      background: #060c18;
+    }
+    
+    /* Background */
+    .bg { position: absolute; inset: 0; z-index: 0; background: radial-gradient(ellipse at 50% 50%, #0d2240 0%, #060c18 80%); }
+    .grid {
+      position: absolute; inset: 0; z-index: 1; opacity: 0.5;
+      background-image: linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.03) 1px, transparent 1px);
+      background-size: 80px 80px;
+    }
+
+    /* Slider */
+    .slider { position: absolute; inset: 0; z-index: 2; display: flex; width: 100vw; height: 100vh; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+    .slide-wrapper { min-width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px; }
+    .slide { width: 100%; max-width: 1300px; padding: 40px; display: flex; flex-direction: column; justify-content: center; }
+
+    /* Typography */
+    h1 { font-family: 'Space Grotesk', sans-serif; font-size: 64px; font-weight: 900; line-height: 1.1; margin-bottom: 24px; }
+    .highlight { background: linear-gradient(135deg, #00d4aa, #0088ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .highlight-red { background: linear-gradient(135deg, #ff5252, #ff8a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .highlight-orange { background: linear-gradient(135deg, #ffb347, #ff9500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .sub { font-size: 28px; color: rgba(255,255,255,.6); margin-bottom: 60px; max-width: 900px; line-height: 1.4; }
+    
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 32px; }
+
+    .card { background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08); border-radius: 20px; padding: 40px; }
+    .card .icon { font-size: 48px; margin-bottom: 20px; }
+    .card .title { font-size: 24px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+    .card .desc { font-size: 16px; color: rgba(255,255,255,.6); line-height: 1.5; }
+
+    /* Nav */
+    .nav { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 10; display: flex; gap: 12px; }
+    .dot { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,.2); cursor: pointer; transition: 0.3s; }
+    .dot.active { background: #00d4aa; width: 32px; border-radius: 6px; }
+
+  </style>
+</head>
+<body>
+
+<div class="bg"></div>
+<div class="grid"></div>
+
+<div class="slider" id="slider">
+  
+  <!-- Slide 1: A Dor -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <h1>O varejo perde <span class="highlight-red">R$ 2.400/mês</span><br>porque decide às cegas</h1>
+      <div class="sub">Decisões lentas baseadas em intuição geram dois problemas críticos:</div>
+      
+      <div class="grid-2">
+        <div class="card" style="border-color: rgba(255,82,82,.3);">
+          <div class="icon">📦</div>
+          <div class="title highlight-red">8% de Excesso de Estoque</div>
+          <div class="desc">Comprar produto que não vende. Resultado: vencimento e dinheiro travado na prateleira.</div>
+        </div>
+        <div class="card" style="border-color: rgba(255,82,82,.3);">
+          <div class="icon">🚨</div>
+          <div class="title highlight-red">4% de Ruptura de Estoque</div>
+          <div class="desc">Faltar produto justamente no dia em que o clima ou um evento traria o maior pico de vendas do mês.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 2: A Solução -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <h1>A Solução:<br><span class="highlight">O PDV que prevê o futuro</span></h1>
+      <div class="sub">Mais que registrar vendas, o Sazonalizei diz <strong>o que comprar e quando comprar</strong>.</div>
+      
+      <div class="grid-3">
+        <div class="card">
+          <div class="icon">📸</div>
+          <div class="title">Memória Automática</div>
+          <div class="desc">A cada venda, o sistema grava secretamente: qual o Clima, nível do Rio e Evento Regional do momento.</div>
+        </div>
+        <div class="card">
+          <div class="icon">🧠</div>
+          <div class="title">Motor de Inteligência</div>
+          <div class="desc">Identifica o DNA do comércio: o que vende mais na "cheia" do rio ou num dia "quente".</div>
+        </div>
+        <div class="card">
+          <div class="icon">📲</div>
+          <div class="title">Previsão 60 Dias</div>
+          <div class="desc">O dashboard avisa com antecedência o que vai faltar antes da ruptura acontecer.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 3: Diferenciais -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <h1>Por que somos <span class="highlight">Diferentes?</span></h1>
+      <div class="sub">Design para a vida real e dados que criam barreira de entrada.</div>
+      
+      <div class="grid-2">
+        <div class="card">
+          <div class="icon">🎨</div>
+          <div class="title highlight">Visual: Cores em vez de Gráficos</div>
+          <div class="desc">O comerciante não quer ler planilhas. Badges avisam rápido: 🔴 Risco (não compre), 🟢 Favorável (compre agora).</div>
+        </div>
+        <div class="card">
+          <div class="icon">🛡️</div>
+          <div class="title highlight">Confiabilidade & LGPD</div>
+          <div class="desc">Dados fiscais e financeiros protegidos. Usamos anonimização irreversível para prever tendências regionais com segurança legal absoluta.</div>
+        </div>
+        <div class="card" style="grid-column: span 2; display: flex; align-items: center; gap: 40px; padding: 24px 40px;">
+          <div class="icon" style="margin: 0;">🌍</div>
+          <div>
+            <div class="title highlight" style="margin-bottom: 8px;">O Fosso Defensável (Moat)</div>
+            <div class="desc">Nenhum software nacional sabe o impacto do nível do Rio Negro na venda de cerveja. O foco regional hiper-nichado não pode ser copiado do dia para a noite.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Slide 4: Modelo de Negocio e ROI -->
+  <div class="slide-wrapper">
+    <div class="slide">
+      <h1>Modelo de Negócio e <span class="highlight-orange">ROI</span></h1>
+      <div class="sub">Nós não vendemos software. Nós vendemos <strong>retorno garantido.</strong></div>
+      
+      <div class="grid-3" style="align-items: end;">
+        <div class="card" style="padding: 30px;">
+          <div style="font-size: 16px; font-weight: 700; color: rgba(255,255,255,.5); text-transform: uppercase;">1. MEI</div>
+          <div style="font-size: 56px; font-weight: 900; color: #fff; margin: 10px 0;">R$ 0</div>
+          <div class="desc">Contribui com a rede estatística anonimizada. Ganha gestão básica.</div>
+        </div>
+        <div class="card" style="border-color: #00d4aa; padding: 40px; background: rgba(0,212,170,.05); transform: translateY(-10px);">
+          <div style="font-size: 16px; font-weight: 700; color: #00d4aa; text-transform: uppercase;">2. Comerciante (Foco)</div>
+          <div style="font-size: 56px; font-weight: 900; color: #00d4aa; margin: 10px 0;">R$ 149<span style="font-size:18px;">/mês</span></div>
+          <div class="desc">Motor Sazonal ativo. Retorna em média <strong>R$ 2.800/mês</strong>. Isso é um <strong>ROI de 18x</strong>!</div>
+        </div>
+        <div class="card" style="padding: 30px;">
+          <div style="font-size: 16px; font-weight: 700; color: rgba(255,255,255,.5); text-transform: uppercase;">3. Distribuidor</div>
+          <div style="font-size: 56px; font-weight: 900; color: #ffb347; margin: 10px 0;">R$ 349<span style="font-size:18px;">/mês</span></div>
+          <div class="desc">Previsões avançadas para eventos e controle rígido de perdas.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Navigation UI -->
+<div class="nav" id="dots">
+  <div class="dot active"></div>
+  <div class="dot"></div>
+  <div class="dot"></div>
+  <div class="dot"></div>
+</div>
+
+<script>
+  let currentSlide = 0;
+  const totalSlides = 4;
+  const slider = document.getElementById('slider');
+  const dots = document.querySelectorAll('.dot');
+
+  function updateSlider() {
+    slider.style.transform = `translateX(-${currentSlide * 100}vw)`;
+    dots.forEach((dot, index) => dot.classList.toggle('active', index === currentSlide));
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' && currentSlide < totalSlides - 1) currentSlide++;
+    if (e.key === 'ArrowLeft' && currentSlide > 0) currentSlide--;
+    updateSlider();
+  });
+</script>
+
+</body>
+</html>

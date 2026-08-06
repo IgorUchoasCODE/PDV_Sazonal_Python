@@ -16,8 +16,13 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from django.http import HttpResponse
+
+def dummy_favicon(request):
+    return HttpResponse(status=204)
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('pdv.urls')),
+    path('favicon.ico', dummy_favicon),
 ]

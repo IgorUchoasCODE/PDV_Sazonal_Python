@@ -62,7 +62,7 @@
                             {% if compra.pagamentos or compra.flutuacoes %}
                                 <!-- Pagamentos -->
                                 {% for pag in compra.pagamentos %}
-                                <div class="hover-scale" onclick="abrirModalPagamento({{ pag.id_pagamento }})" style="display: flex; justify-content: space-between; padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px; cursor: pointer;">
+                                <div class="hover-scale" onclick="abrirModalPagamento({{ compra.id_nota }})" style="display: flex; justify-content: space-between; padding: 0.5rem 1rem; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); border-radius: 6px; cursor: pointer;">
                                     <div>
                                         <span style="font-size: 0.85rem; font-weight: 600; color: #065f46;">💵 Pagamento Efetuado</span>
                                         <span style="font-size: 0.8rem; color: #64748b; margin-left: 8px;">Data: {{ pag.data_pagamento|slice:":10" }}</span>
@@ -293,7 +293,7 @@
 const mapaPerdas = JSON.parse('{{ mapa_perdas_json|escapejs }}');
 let carrinhoCompra = [];
 let carrinhoReposicao = [];
-async function abrirModalPagamento(idPagamento) {
+async function abrirModalPagamento(idNota) {
     const modal = document.getElementById('modal-pagamento');
     const conteudo = document.getElementById('modal-pagamento-conteudo');
     
@@ -301,54 +301,43 @@ async function abrirModalPagamento(idPagamento) {
     conteudo.innerHTML = '<div style="text-align: center; color: #64748b;">Carregando informações...</div>';
     
     try {
-        const resp = await fetch(`/api/detalhes-pagamento/${idPagamento}/`);
+        const resp = await fetch(`/api/detalhes-pagamento/${idNota}/`);
         const json = await resp.json();
         
         if (json.sucesso) {
             const d = json.dados;
-            // Render basic JSON view for now, could be improved with markdown if needed
-            let html = `
-                <div style="display: grid; gap: 1rem;">
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
-                        <span style="color: #64748b;">ID Pagamento</span>
-                        <strong style="color: #1e293b;">#${d.id}</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
-                        <span style="color: #64748b;">Data Pagamento</span>
-                        <strong style="color: #1e293b;">${d.dataPagamento}</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
-                        <span style="color: #64748b;">Valor</span>
-                        <strong style="color: #059669; font-size: 1.1rem;">R$ ${parseFloat(d.valor).toFixed(2)}</strong>
-                    </div>
-                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
-                        <span style="color: #64748b;">Forma de Pagamento</span>
-                        <strong style="color: #1e293b;">${d.formaPagamento}</strong>
-                    </div>
-                </div>
-            `;
-            
-            if (d.snapshot_sazonal && d.snapshot_sazonal.registrado) {
-                const s = d.snapshot_sazonal;
-                html += `
-                    <div style="margin-top: 1.5rem; background: #f8fafc; padding: 1rem; border-radius: 6px; border: 1px solid #e2e8f0;">
-                        <h4 style="margin-top: 0; margin-bottom: 0.5rem; color: #334155; font-size: 0.95rem;">🌤️ Condições Sazonais no Momento da Compra</h4>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-size: 0.85rem;">
-                            <div><span style="color: #64748b;">Clima:</span> <strong>${s.indicador_clima}</strong></div>
-                            <div><span style="color: #64748b;">Temperatura:</span> <strong>${s.temperatura_atual}</strong></div>
-                            <div><span style="color: #64748b;">Rio:</span> <strong>${s.indicador_rio}</strong></div>
-                            <div><span style="color: #64748b;">Chuva:</span> <strong>${s.indicador_chuva}</strong></div>
+            let html = '';
+            if (d.pagamentos && d.pagamentos.length > 0) {
+                d.pagamentos.forEach(p => {
+                    html += `
+                    <div style="display: grid; gap: 1rem; margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 1px solid #e2e8f0;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #64748b;">ID Pagamento</span>
+                            <strong style="color: #1e293b;">#${p.id || p.id_pagamento}</strong>
                         </div>
-                    </div>
-                `;
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #64748b;">Data Pagamento</span>
+                            <strong style="color: #1e293b;">${p.data_pagamento || p.dataPagamento}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #64748b;">Valor</span>
+                            <strong style="color: #059669;">R$ ${parseFloat(p.valor).toFixed(2)}</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #64748b;">Forma de Pagamento</span>
+                            <strong style="color: #1e293b;">${p.forma_pagamento_desc || p.forma_pagamento}</strong>
+                        </div>
+                    </div>`;
+                });
+            } else {
+                html = '<div style="text-align: center; color: #64748b;">Nenhum detalhe de pagamento encontrado.</div>';
             }
-            
             conteudo.innerHTML = html;
         } else {
             conteudo.innerHTML = `<div style="text-align: center; color: #dc2626;">Erro: ${json.mensagem}</div>`;
         }
     } catch (e) {
-        conteudo.innerHTML = `<div style="text-align: center; color: #dc2626;">Erro ao buscar informações de pagamento.</div>`;
+        conteudo.innerHTML = `<div style="text-align: center; color: #dc2626;">Erro ao buscar informações.</div>`;
     }
 }
 

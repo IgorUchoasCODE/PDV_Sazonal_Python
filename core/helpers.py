@@ -461,7 +461,8 @@ def get_grafico_lucratividade():
                     SUM(CASE WHEN fe.id_tipoNota = 2 THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) as vendas,
                     SUM(CASE WHEN fe.id_tipoNota = 2 THEN fe.lucroTotal ELSE 0 END) as lucro,
                     SUM(CASE WHEN fe.id_tipoNota = 3 THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) as devolucoes,
-                    SUM(CASE WHEN fe.id_tipoNota = 4 THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) as perdas
+                    SUM(CASE WHEN fe.id_tipoNota = 4 THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) as perdas,
+                    SUM(CASE WHEN fe.id_tipoNota = 5 THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) as ressarcimentos
                 FROM fluxoEstoque fe
                 GROUP BY DATE(fe.data)
                 ORDER BY DATE(fe.data) ASC
@@ -476,6 +477,7 @@ def get_grafico_lucratividade():
                 'lucro': round(r['lucro'] or 0, 2),
                 'devolucoes': round(r['devolucoes'] or 0, 2),
                 'perdas': round(r['perdas'] or 0, 2),
+                'ressarcimentos': round(r['ressarcimentos'] or 0, 2),
             })
         return result
     return _safe(_real, [])
@@ -517,6 +519,7 @@ def financeiro_context():
         "movimentacoes": _safe(PaymentManager.get_historico_movimentacoes_global, []),
         "relatorio_entidades": get_relatorio_por_entidade(),
         "grafico_json": json.dumps(grafico_dados),
+        "comparativo_fornecedores": get_comparativo_fornecedores(),
     }
 
 
@@ -658,3 +661,149 @@ def pdv_context():
         "notas_venda": get_notas_venda(),
         "notas_devolucao": get_notas_devolucao(),
     }
+
+
+def get_comparativo_fornecedores():
+    def _real():
+        from br.com.pdv.src.BDD.bancodb import BancoDB
+        DB, _, _ = _backend()
+        
+        resultados = []
+        with BancoDB.obter_conexao() as conn:
+            cur = conn.cursor()
+            
+            # Busca a média ponderada de quantidade vendida por produto
+            cur.execute("""
+                SELECT id_produto, SUM(ABS(quantidade)) / COUNT(DISTINCT id_fluxo_nota) as media_venda 
+                FROM fluxoEstoque 
+                WHERE id_tipoNota = 2 
+                GROUP BY id_produto
+            """)
+            medias_venda = {r['id_produto']: float(r['media_venda'] or 1.0) for r in cur.fetchall()}
+            
+            cur.execute("""
+                SELECT 
+                    fe.id_produto,
+                    p.nome AS produto_nome,
+                    COALESCE(pe.nome, em.nome, 'Fornecedor ' || fn_compra.id_representante) AS fornecedor_nome,
+                    sz.indicador_clima,
+                    
+                    SUM(CASE WHEN fe.id_tipoNota IN (1, 5) THEN ABS(fe.quantidade) ELSE 0 END) AS qtd_comprada,
+                    SUM(CASE WHEN fe.id_tipoNota IN (1, 5) THEN ABS(fe.quantidade) * fe.valorUnidario ELSE 0 END) AS custo_total,
+                    SUM(CASE WHEN fe.id_tipoNota = 2 THEN ABS(fe.quantidade) ELSE 0 END) AS vendas,
+                    SUM(CASE WHEN fe.id_tipoNota = 4 THEN ABS(fe.quantidade) ELSE 0 END) AS perdas,
+                    
+                    SUM(CASE WHEN fe.id_tipoNota = 2 THEN fe.lucroTotal ELSE 0 END) AS lucro_realizado,
+                    SUM(CASE WHEN fe.id_tipoNota = 2 THEN (ABS(fe.quantidade) * fe.valorUnidario) - fe.lucroTotal ELSE 0 END) AS custo_vendas
+                    
+                FROM fluxoEstoque fe
+                JOIN fluxosNotasEstoque fn_compra ON fn_compra.id = COALESCE(
+                    NULLIF(fe.id_notaOrigem, 0), 
+                    fe.id_notaOrigem, 
+                    fe.id_fluxo_nota
+                )
+                LEFT JOIN snapshot_sazonal sz ON sz.id_fluxo_nota = fn_compra.id
+                LEFT JOIN entidades en ON en.id = fn_compra.id_representante
+                LEFT JOIN pessoas pe ON pe.id = en.id_pessoa
+                LEFT JOIN empresas em ON em.id = en.id_empresa
+                JOIN produto p ON p.id = fe.id_produto
+                WHERE fn_compra.id_tipoNota = 1
+                GROUP BY fe.id_produto, p.nome, fn_compra.id_representante, fornecedor_nome, sz.indicador_clima
+            """)
+            
+            analise = {}
+            for r in cur.fetchall():
+                id_prod = r['id_produto']
+                if id_prod not in analise:
+                    analise[id_prod] = {'produto': r['produto_nome'], 'fornecedores': {}}
+                
+                nome_forn = r['fornecedor_nome']
+                if nome_forn not in analise[id_prod]['fornecedores']:
+                    analise[id_prod]['fornecedores'][nome_forn] = {
+                        'qtd_comprada': 0, 'custo_total': 0, 'perdas': 0, 
+                        'lucro_realizado': 0, 'custo_vendas': 0,
+                        'climas': {}
+                    }
+                
+                clima = r['indicador_clima'] or 'INDEFINIDO'
+                q_c = float(r['qtd_comprada'] or 0)
+                if q_c == 0: continue
+                
+                c_t = float(r['custo_total'] or 0)
+                p_r = float(r['perdas'] or 0)
+                l_r = float(r['lucro_realizado'] or 0)
+                c_v = float(r['custo_vendas'] or 0)
+                
+                forn_ref = analise[id_prod]['fornecedores'][nome_forn]
+                forn_ref['qtd_comprada'] += q_c
+                forn_ref['custo_total'] += c_t
+                forn_ref['perdas'] += p_r
+                forn_ref['lucro_realizado'] += l_r
+                forn_ref['custo_vendas'] += c_v
+                
+                margem_clima = (l_r / c_v) if c_v > 0 else 0
+                forn_ref['climas'][clima] = {
+                    'margem': margem_clima * 100,
+                    'perdas_pct': (p_r / q_c) * 100
+                }
+
+        def format_perda_media(perdas, compradas, media_venda):
+            if perdas <= 0 or compradas <= 0:
+                return 'perde 0 un'
+            ratio = perdas / compradas
+            perda_na_media = ratio * media_venda
+            return f"impacta {perda_na_media:.4f} un perdidas no ticket médio de {media_venda:.2f} un"
+
+        for id_prod, dados in analise.items():
+            lista_forn = []
+            media_prod = medias_venda.get(id_prod, 1.0)
+            
+            for nome, stats in dados['fornecedores'].items():
+                if stats['qtd_comprada'] == 0: continue
+                
+                custo_med = stats['custo_total'] / stats['qtd_comprada']
+                margem = (stats['lucro_realizado'] / stats['custo_vendas'] * 100) if stats['custo_vendas'] > 0 else 0
+                
+                melhor_clima = None
+                melhor_margem_clima = -999
+                for clima, met_clima in stats['climas'].items():
+                    if met_clima['margem'] > melhor_margem_clima and clima != 'INDEFINIDO':
+                        melhor_margem_clima = met_clima['margem']
+                        melhor_clima = clima
+                
+                lista_forn.append({
+                    'nome': nome,
+                    'custo': custo_med,
+                    'perdas_reais': stats['perdas'],
+                    'qtd_comprada': stats['qtd_comprada'],
+                    'margem': margem,
+                    'melhor_clima': melhor_clima
+                })
+
+            if len(lista_forn) > 1:
+                lista_forn.sort(key=lambda x: x['margem'], reverse=True)
+                melhor = lista_forn[0]
+                pior = lista_forn[-1]
+                
+                if melhor['nome'] == pior['nome']:
+                    continue
+                
+                dif_custo = ((melhor['custo'] - pior['custo']) / pior['custo']) * 100 if pior['custo'] > 0 else 0
+                dif_lucro = (melhor['margem'] - pior['margem'])
+                
+                perda_txt = format_perda_media(melhor['perdas_reais'], melhor['qtd_comprada'], media_prod)
+                clima_txt = f" Seu rendimento máximo atinge o pico em climas **{melhor['melhor_clima']}**." if melhor['melhor_clima'] else ""
+                
+                if dif_custo > 0:
+                    texto = f"O fornecedor **{melhor['nome']}** é {dif_custo:.1f}% mais caro que **{pior['nome']}**, mas gera {dif_lucro:.1f}% a mais de lucratividade.{clima_txt} Índice de perda: {perda_txt}."
+                else:
+                    texto = f"O fornecedor **{melhor['nome']}** é {-dif_custo:.1f}% mais barato que **{pior['nome']}**, gerando {dif_lucro:.1f}% a mais de lucratividade.{clima_txt} Índice de perda: {perda_txt}."
+                
+                resultados.append({
+                    'produto': dados['produto'],
+                    'texto': texto,
+                    'melhor': melhor['nome'],
+                    'pior': pior['nome']
+                })
+        return resultados
+    return _safe(_real, [])

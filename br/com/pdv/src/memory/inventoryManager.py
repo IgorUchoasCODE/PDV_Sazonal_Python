@@ -575,8 +575,8 @@ class InventoryManager:
             desconto = float(dados.get("desconto", 0))
             acrescimo = float(dados.get("acrescimo", 0))
 
-            # Salva cabeçalho no banco (tipo 2 = VENDA) com desconto e acrescimo
-            id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(2, id_cli, str(data_venc or data_emissao), desconto, acrescimo)
+            # Salva cabeçalho no banco (tipo 2 = VENDA) sem desconto e acrescimo na query
+            id_nota = DB.INSERT.FLUXO_NOTA_ESTOQUE.executar(2, id_cli, str(data_venc or data_emissao))
             if not id_nota or id_nota <= 0:
                 raise ValueError("Falha ao inserir o cabeçalho da nota de venda no banco.")
 
@@ -1594,11 +1594,11 @@ class InventoryManager:
 
         # ── Alertas automáticos ───────────────────────────────────────
         alertas = []
-        q_max = por_clima[clima_max_venda]["total_vendas"]
-        q_min = min(por_clima[k]["total_vendas"] for k in por_clima if por_clima[k]["total_vendas"] > 0) if any(por_clima[k]["total_vendas"] > 0 for k in por_clima) else 1
-        if q_min > 0 and q_max / q_min >= 1.3:
+        q_max = por_clima[clima_max_venda]["media_vendas"]
+        q_min = min(por_clima[k]["media_vendas"] for k in por_clima if por_clima[k]["media_vendas"] > 0) if any(por_clima[k]["media_vendas"] > 0 for k in por_clima) else 1
+        if q_min > 0 and q_max / q_min >= 1.1:
             pct = round((q_max / q_min - 1) * 100)
-            alertas.append(f"Vendas {pct}% maiores em clima {clima_max_venda} vs. outros climas.")
+            alertas.append(f"Ticket médio {pct}% maior em clima {clima_max_venda} vs. menor média sazonal.")
         if por_chuva["CHUVOSO"]["total_perdas"] > por_chuva["SECO"]["total_perdas"] * 1.2:
             alertas.append("Clima CHUVOSO associado a aumento significativo de perdas.")
         if por_rio["CHEIA"]["total_vendas"] > por_rio["NORMAL"]["total_vendas"] * 1.15:

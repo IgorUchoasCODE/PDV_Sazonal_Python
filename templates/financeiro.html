@@ -84,10 +84,21 @@
         </div>
         <!-- Filtros de período -->
         <div class="filter-btn-group" id="chart-filters-fin">
+          <button class="filter-btn" data-days="1">Hoje</button>
           <button class="filter-btn" data-days="7">7D</button>
+          <button class="filter-btn" data-days="15">15D</button>
           <button class="filter-btn" data-days="30">30D</button>
+          <button class="filter-btn" data-days="90">90D</button>
           <button class="filter-btn active" data-days="all">Tudo</button>
         </div>
+      </div>
+      <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap; margin-top:0.75rem;">
+          <label style="font-size:0.85rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" class="ds-toggle" data-index="0" checked> Vendas</label>
+          <label style="font-size:0.85rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" class="ds-toggle" data-index="1" checked> Custo</label>
+          <label style="font-size:0.85rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" class="ds-toggle" data-index="2" checked> Lucro</label>
+          <label style="font-size:0.85rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" class="ds-toggle" data-index="3" checked> Perdas</label>
+          <label style="font-size:0.85rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" class="ds-toggle" data-index="4" checked> Devoluções</label>
+          <label style="font-size:0.85rem; display:flex; align-items:center; gap:0.25rem;"><input type="checkbox" class="ds-toggle" data-index="5" checked> Ressarcimento</label>
       </div>
     </div>
     <div style="height:260px; position:relative;">
@@ -173,6 +184,32 @@
     </form>
   </div>
 
+</div>
+
+{# ═══════════════════════════════════════════════════════════════ #}
+{# COEFICIENTE DE LUCRATIVIDADE DE FORNECEDORES                   #}
+{# ═══════════════════════════════════════════════════════════════ #}
+<div class="fin-card" style="margin-bottom:1.5rem; background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%); border-left: 4px solid #10b981;">
+  <div class="fin-card-header" style="margin-bottom:1rem;">
+    <div>
+      <h3 class="fin-title" style="color: #065f46;">📊 Coeficiente de Lucratividade de Fornecedores</h3>
+      <p class="fin-subtitle">Análise dinâmica de perdas e vantagens competitivas baseada no consumo FIFO</p>
+    </div>
+  </div>
+  <div style="display:flex; flex-direction:column; gap:0.75rem;">
+    {% if comparativo_fornecedores %}
+      {% for comp in comparativo_fornecedores %}
+      <div style="background:#ffffff; border:1px solid #d1fae5; border-radius:8px; padding:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <h4 style="margin:0 0 0.5rem 0; font-size:1rem; color:#047857;">{{ comp.produto }}</h4>
+        <p style="margin:0; font-size:0.9rem; color:#374151; line-height:1.4;">{{ comp.texto|safe }}</p>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div style="background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:1.5rem; text-align:center; color:#64748b; font-size:0.9rem;">
+        Não há dados suficientes ou concorrência (múltiplos fornecedores para o mesmo produto) para calcular o coeficiente de lucratividade no momento.
+      </div>
+    {% endif %}
+  </div>
 </div>
 
 {# ═══════════════════════════════════════════════════════════════ #}
@@ -395,11 +432,12 @@ function renderGrafico(dados) {
         data: {
             labels,
             datasets: [
-                { label: 'Vendas',     data: dados.map(d => d.vendas),     backgroundColor: 'rgba(16,185,129,0.7)',  borderColor: '#10b981', borderWidth: 1.5, borderRadius: 3, order: 2 },
-                { label: 'Custo',      data: dados.map(d => d.compras),    backgroundColor: 'rgba(239,68,68,0.5)',   borderColor: '#ef4444', borderWidth: 1.5, borderRadius: 3, order: 2 },
-                { label: 'Lucro',      data: dados.map(d => d.lucro),      type: 'line', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2.5, tension: 0.35, fill: true, pointRadius: 3, order: 1 },
-                { label: 'Perdas',     data: dados.map(d => d.perdas),     backgroundColor: 'rgba(245,158,11,0.6)',  borderColor: '#f59e0b', borderWidth: 1.5, borderRadius: 3, order: 2 },
-                { label: 'Devol.',     data: dados.map(d => d.devolucoes), backgroundColor: 'rgba(139,92,246,0.5)', borderColor: '#8b5cf6', borderWidth: 1.5, borderRadius: 3, order: 2 },
+                { label: 'Vendas',         data: dados.map(d => d.vendas),         backgroundColor: 'rgba(16,185,129,0.7)',  borderColor: '#10b981', borderWidth: 1.5, borderRadius: 3, order: 2 },
+                { label: 'Custo',          data: dados.map(d => d.compras),        backgroundColor: 'rgba(239,68,68,0.5)',   borderColor: '#ef4444', borderWidth: 1.5, borderRadius: 3, order: 2 },
+                { label: 'Lucro',          data: dados.map(d => d.lucro),          type: 'line', borderColor: '#3b82f6', backgroundColor: 'rgba(59,130,246,0.1)', borderWidth: 2.5, tension: 0.35, fill: true, pointRadius: 3, order: 1 },
+                { label: 'Perdas',         data: dados.map(d => d.perdas),         backgroundColor: 'rgba(245,158,11,0.6)',  borderColor: '#f59e0b', borderWidth: 1.5, borderRadius: 3, order: 2 },
+                { label: 'Devol.',         data: dados.map(d => d.devolucoes),     backgroundColor: 'rgba(139,92,246,0.5)',  borderColor: '#8b5cf6', borderWidth: 1.5, borderRadius: 3, order: 2 },
+                { label: 'Ressarcimento',  data: dados.map(d => d.ressarcimentos), backgroundColor: 'rgba(14,165,233,0.5)',  borderColor: '#0ea5e9', borderWidth: 1.5, borderRadius: 3, order: 2 },
             ]
         },
         options: {
@@ -416,7 +454,7 @@ function renderGrafico(dados) {
             scales: {
                 x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 }, maxRotation: 45 } },
                 y: { beginAtZero: true, grid: { color: 'rgba(0,0,0,0.06)' },
-                     ticks: { callback: v => 'R$ ' + v.toLocaleString('pt-BR'), font: { size: 11 } } }
+                     ticks: { callback: v => 'R$ ' + (v >= 1000 ? (v/1000).toFixed(1) + 'k' : v.toLocaleString('pt-BR')), font: { size: 11 } } }
             }
         }
     });
@@ -438,6 +476,17 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('#chart-filters-fin .filter-btn').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
             filtrarDias(this.dataset.days);
+        });
+    });
+    
+    // Toggle datasets
+    document.querySelectorAll('.ds-toggle').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            if (currentChart) {
+                const idx = parseInt(this.dataset.index);
+                currentChart.getDatasetMeta(idx).hidden = !this.checked;
+                currentChart.update();
+            }
         });
     });
 });

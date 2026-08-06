@@ -192,6 +192,9 @@ def estoque_view(request):
 
     valor_total_estoque = sum(float(l['qtd_disponivel']) * float(l['custo_unitario']) for l in lotes_fifo if l['qtd_disponivel'])
             
+    from br.com.pdv.src.apis.gerenciadorSazonal import GerenciadorSazonal
+    sazonal = GerenciadorSazonal.obter_indicadores_sazonais()
+
     return render(request, 'estoque.html', {
         'lotes_fifo': lotes_fifo,
         'arvore_notas': arvore_notas,
@@ -200,7 +203,8 @@ def estoque_view(request):
         'catalogo': catalogo,
         'total_simples': len(simples),
         'total_compostos': len(compostos),
-        'valor_total_estoque': valor_total_estoque
+        'valor_total_estoque': valor_total_estoque,
+        'sazonal': sazonal
     })
 
 @csrf_exempt

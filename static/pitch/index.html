@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sazonalizei PDV — Apresentação de Impacto</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@500;600;700;800;900&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Inter', sans-serif; background: #040812; color: #fff; }
+
+    /* ── SLIDE ENGINE ─────────────────────────────────────────── */
+    .deck { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+    .slide {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 48px 64px;
+      opacity: 0; pointer-events: none;
+      transition: opacity .45s cubic-bezier(.4,0,.2,1), transform .45s cubic-bezier(.4,0,.2,1);
+      transform: translateX(60px);
+    }
+    .slide.active { opacity: 1; pointer-events: all; transform: translateX(0); }
+    .slide.out-left { opacity: 0; transform: translateX(-60px); }
+
+    /* ── BACKGROUNDS ─────────────────────────────────────────── */
+    .bg-gradient {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 30%, #0a1c38 0%, #040812 80%);
+    }
+    .grid-tex {
+      position: absolute; inset: 0; pointer-events: none; z-index: 0; opacity: 0.4;
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size: 64px 64px;
+    }
+
+    /* ── NAVIGATION & HEADER ─────────────────────────────────── */
+    .top-bar {
+      position: fixed; top: 0; left: 0; right: 0; height: 60px; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; padding: 0 40px;
+      background: rgba(4,8,18,.8); backdrop-filter: blur(12px); border-bottom: 1px solid rgba(255,255,255,.06);
+    }
+    .brand { font-family: 'Space Grotesk', sans-serif; font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+    .brand-dot { width: 10px; height: 10px; border-radius: 50%; background: #00d4aa; box-shadow: 0 0 12px #00d4aa; }
+    .slide-counter { font-family: 'Space Grotesk', sans-serif; font-size: 13px; font-weight: 600; color: rgba(255,255,255,.4); }
+
+    .bottom-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; height: 64px; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between; padding: 0 40px;
+      background: rgba(4,8,18,.85); backdrop-filter: blur(12px); border-top: 1px solid rgba(255,255,255,.06);
+    }
+    .nav-controls { display: flex; align-items: center; gap: 16px; }
+    .btn-nav {
+      width: 42px; height: 42px; border-radius: 50%; border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.04); color: #fff; font-size: 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; transition: all .2s;
+    }
+    .btn-nav:hover { background: rgba(0,212,170,.15); border-color: #00d4aa; color: #00d4aa; }
+    .dots-wrapper { display: flex; gap: 6px; }
+    .dot-step { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.2); cursor: pointer; transition: all .3s; }
+    .dot-step.active { width: 24px; border-radius: 4px; background: #00d4aa; }
+    .progress-bar { position: fixed; top: 60px; left: 0; height: 3px; background: linear-gradient(90deg, #00d4aa, #0088ff); z-index: 101; transition: width .3s; }
+
+    /* ── TYPOGRAPHY & CARDS ──────────────────────────────────── */
+    .slide-content { position: relative; z-index: 10; width: 100%; max-width: 1240px; }
+    .tagline {
+      font-family: 'Space Grotesk', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 3px;
+      text-transform: uppercase; color: #00d4aa; margin-bottom: 12px; display: inline-flex; align-items: center; gap: 8px;
+    }
+    .tagline::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #00d4aa; }
+
+    h1 { font-family: 'Space Grotesk', sans-serif; font-size: clamp(32px, 4.5vw, 56px); font-weight: 800; line-height: 1.1; margin-bottom: 16px; color: #fff; }
+    .grad-teal   { background: linear-gradient(135deg, #00d4aa, #0088ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .grad-red    { background: linear-gradient(135deg, #ff5252, #ff8a8a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .grad-amber  { background: linear-gradient(135deg, #ffb347, #ff9500); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+    .grad-purple { background: linear-gradient(135deg, #c084fc, #5b9fff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+    p.desc { font-size: clamp(14px, 1.4vw, 18px); color: rgba(255,255,255,.6); line-height: 1.6; max-width: 780px; margin-bottom: 32px; }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; width: 100%; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; width: 100%; }
+
+    .card {
+      background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px; padding: 28px; backdrop-filter: blur(12px); transition: all .3s;
+    }
+    .card:hover { border-color: rgba(0,212,170,.3); transform: translateY(-3px); }
+
+    /* ── BADGES & INDICATORS ─────────────────────────────────── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 100px;
+      font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+    }
+    .badge-hot  { background: rgba(255,82,82,.12); border: 1px solid rgba(255,82,82,.3); color: #ff5252; }
+    .badge-warm { background: rgba(255,179,71,.12); border: 1px solid rgba(255,179,71,.3); color: #ffb347; }
+    .badge-cold { background: rgba(91,159,255,.12); border: 1px solid rgba(91,159,255,.3); color: #5b9fff; }
+    .badge-good { background: rgba(0,212,170,.12); border: 1px solid rgba(0,212,170,.3); color: #00d4aa; }
+
+    .indicator-box {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
+    }
+
+    /* ── QUOTE / HIGHLIGHT BOX ────────────────────────────────── */
+    .quote-box {
+      padding: 20px 24px; border-radius: 16px; background: rgba(0,212,170,.05);
+      border-left: 4px solid #00d4aa; border-top: 1px solid rgba(0,212,170,.15);
+      border-right: 1px solid rgba(0,212,170,.15); border-bottom: 1px solid rgba(0,212,170,.15);
+      font-size: 16px; font-style: italic; color: #fff; line-height: 1.5; margin-top: 20px;
+    }
+
+    /* ── METRIC BLOCK ────────────────────────────────────────── */
+    .metric-val { font-family: 'Space Grotesk', sans-serif; font-size: 42px; font-weight: 900; line-height: 1; margin-bottom: 6px; }
+
+    /* ── COMPARISON TABLE ────────────────────────────────────── */
+    .comp-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .comp-table th { text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; color: rgba(255,255,255,.4); border-bottom: 1px solid rgba(255,255,255,.1); }
+    .comp-table td { padding: 14px 16px; font-size: 13px; color: rgba(255,255,255,.8); border-bottom: 1px solid rgba(255,255,255,.04); }
+  </style>
+</head>
+<body>
+
+<div class="bg-gradient"></div>
+<div class="grid-tex"></div>
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Top Bar -->
+<div class="top-bar">
+  <div class="brand"><div class="brand-dot"></div>SAZONALIZEI PDV</div>
+  <div class="slide-counter" id="slideCounter">SLIDE 1 DE 9</div>
+</div>
+
+<!-- Slide Deck Container -->
+<div class="deck" id="slideDeck">
+
+  <!-- SLIDE 1: CAPA -->
+  <div class="slide active">
+    <div class="slide-content" style="text-align: center; max-width: 960px;">
+      <div class="tagline" style="justify-content: center;">Inteligência de Vendas Sazonal</div>
+      <h1>A Revolução na tomada de decisão do <span class="grad-teal">Pequeno Comerciante</span></h1>
+      <p class="desc" style="margin: 0 auto 36px auto;">
+        Transformamos o clima da sua cidade, o nível dos rios e os eventos da sua região em sugestões de compra exatas no caixa — eliminando perdas e garantindo dinheiro no bolso.
+      </p>
+
+      <div style="display: flex; justify-content: center; gap: 14px; flex-wrap: wrap; margin-bottom: 40px;">
+        <span class="badge badge-hot">🔴 QUENTE ≥ 29°C</span>
+        <span class="badge badge-cold">🔵 CHEIA DO RIO</span>
+        <span class="badge badge-warm">⚡ ALERTA DE EVENTO</span>
+        <span class="badge badge-good">✅ ESTOQUE OPTIMAL</span>
+      </div>
+
+      <div class="card" style="display: inline-flex; align-items: center; gap: 24px; padding: 20px 36px; border-color: rgba(0,212,170,.3); background: rgba(0,212,170,.05);">
+        <div>
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,.5);">Retorno Médio Garantido</div>
+          <div class="grad-teal" style="font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 900;">R$ 2.800/mês</div>
+        </div>
+        <div style="width: 1px; height: 40px; background: rgba(255,255,255,.1);"></div>
+        <div>
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,.5);">Retorno do Investimento</div>
+          <div class="grad-amber" style="font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 900;">18× o valor pago</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 2: A DOR INVISÍVEL -->
+  <div class="slide">
+    <div class="slide-content">
+      <div class="tagline">O Problema Real do Mercado</div>
+      <h1>O achismo custa <span class="grad-red">R$ 2.400 por mês</span> ao pequeno comércio</h1>
+      <p class="desc">A maioria dos comerciantes decide o estoque com base na intuição. O resultado são perdas duplas e invisíveis todos os meses.</p>
+
+      <div class="grid-4">
+        <div class="card" style="border-color: rgba(255,82,82,.2); background: rgba(255,82,82,.03);">
+          <div class="metric-val grad-red">3 a 7</div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px;">Dias para Decidir</div>
+          <div style="font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.5;">Tempo perdido tentando adivinhar o que comprar a cada semana.</div>
+        </div>
+
+        <div class="card" style="border-color: rgba(255,82,82,.2); background: rgba(255,82,82,.03);">
+          <div class="metric-val grad-red">8%</div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px;">Perda por Excesso</div>
+          <div style="font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.5;">Produtos estocados demais que vencem ou encalham na prateleira.</div>
+        </div>
+
+        <div class="card" style="border-color: rgba(255,82,82,.2); background: rgba(255,82,82,.03);">
+          <div class="metric-val grad-red">4%</div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px;">Ruptura no Pico</div>
+          <div style="font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.5;">Falta de produto justamente no dia em que o cliente mais procura.</div>
+        </div>
+
+        <div class="card" style="border-color: rgba(255,82,82,.2); background: rgba(255,82,82,.03);">
+          <div class="metric-val grad-red">68%</div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 6px;">Sem Gestão Adequada</div>
+          <div style="font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.5;">Varejistas que usam caderno ou planilhas estáticas desatualizadas.</div>
+        </div>
+      </div>
+
+      <div class="quote-box" style="border-left-color: #ff5252; background: rgba(255,82,82,.05);">
+        "Enquanto o grande varejo usa tecnologia milionária para antecipar demanda, o comerciante de bairro perde dinheiro porque não sabe o que vai vender amanhã."
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 3: INDICADORES VISUAIS -->
+  <div class="slide">
+    <div class="slide-content">
+      <div class="tagline">Design Simples & Inteligente</div>
+      <h1>Linguagem Visual: <span class="grad-teal">Cores que Guiam a Ação</span></h1>
+      <p class="desc">Esqueça gráficos complexos ou relatórios longos. O Sazonalizei usa badges e cores intuitivas para alertar o comerciante no momento exato da venda.</p>
+
+      <div class="grid-3">
+        <div class="card">
+          <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 16px;">🌡️ Indicador de Clima</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="indicator-box">
+              <span class="badge badge-hot">🔴 QUENTE</span>
+              <span style="font-size: 12px; color: rgba(255,255,255,.6);">Alta procura de bebidas</span>
+            </div>
+            <div class="indicator-box">
+              <span class="badge badge-warm">🟡 AMENO</span>
+              <span style="font-size: 12px; color: rgba(255,255,255,.6);">Consumo regular</span>
+            </div>
+            <div class="indicator-box">
+              <span class="badge badge-cold">🔵 FRIO</span>
+              <span style="font-size: 12px; color: rgba(255,255,255,.6);">Procura por quentes</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 16px;">🌊 Nível dos Rios</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="indicator-box">
+              <span class="badge badge-cold">🔵 CHEIA</span>
+              <span style="font-size: 12px; color: rgba(255,255,255,.6);">Turismo & Fluviais ⚡</span>
+            </div>
+            <div class="indicator-box">
+              <span class="badge badge-good">🟢 NORMAL</span>
+              <span style="font-size: 12px; color: rgba(255,255,255,.6);">Navegação estável</span>
+            </div>
+            <div class="indicator-box">
+              <span class="badge badge-warm">🟠 SECA</span>
+              <span style="font-size: 12px; color: rgba(255,255,255,.6);">Alerta de Frete Alto</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size: 12px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,.4); margin-bottom: 16px;">📦 Risco de Estoque</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="indicator-box">
+              <span class="badge badge-good">✅ FAVORÁVEL</span>
+              <span style="font-size: 12px; color: rgba(255,255,255,.6);">Estocar na Baixa</span>
+            </div>
+            <div class="indicator-box">
+              <span class="badge badge-warm">⚠️ ATENÇÃO</span>
+              <span style="font-size: 12px; color: rgba(255,255,255,.6);">Validade Moderada</span>
+            </div>
+            <div class="indicator-box">
+              <span class="badge badge-hot">🚨 ALERTA URGENTE</span>
+              <span style="font-size: 12px; color: rgba(255,255,255,.6);">Ruptura Próxima</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 4: JORNADA DE FUNCIONALIDADE -->
+  <div class="slide">
+    <div class="slide-content">
+      <div class="tagline">Usabilidade Sem Esforço</div>
+      <h1>Como o Sistema Aprende <span class="grad-teal">Silenciosamente</span></h1>
+      <p class="desc">Nenhuma digitação manual exaustiva. O comerciante usa o caixa normalmente e o sistema acumula inteligência automática.</p>
+
+      <div class="grid-4">
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 36px; margin-bottom: 12px;">🛒</div>
+          <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">1. Venda Registrada</div>
+          <div style="font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.5;">Lançamento comum da nota de compra ou venda no caixa do PDV.</div>
+        </div>
+
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 36px; margin-bottom: 12px;">📸</div>
+          <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">2. Snapshot Capturado</div>
+          <div style="font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.5;">O sistema registra o clima, nível do rio e eventos da região no exato momento.</div>
+        </div>
+
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 36px; margin-bottom: 12px;">🧠</div>
+          <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">3. Motor de Padrões</div>
+          <div style="font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.5;">Calcula o comportamento de compra sob cada condição climática e festiva.</div>
+        </div>
+
+        <div class="card" style="text-align: center;">
+          <div style="font-size: 36px; margin-bottom: 12px;">🔮</div>
+          <div style="font-size: 16px; font-weight: 700; color: #fff; margin-bottom: 6px;">4. Sugestão no Painel</div>
+          <div style="font-size: 12px; color: rgba(255,255,255,.5); line-height: 1.5;">Avisa o que comprar nos próximos 60 dias para maximizar o lucro.</div>
+        </div>
+      </div>
+
+      <div class="quote-box">
+        "O comerciante não precisa virar cientista de dados. O sistema entrega a resposta pronta: 'Compre 20 caixas de cerveja hoje porque sábado terá show e 32°C'."
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 5: INTELIGÊNCIA DE COMPRAS & FIFO -->
+  <div class="slide">
+    <div class="slide-content">
+      <div class="tagline">Gestão de Estoque Profissional</div>
+      <h1>Inteligência de Compra & <span class="grad-purple">Rastreabilidade FIFO</span></h1>
+      <p class="desc">Acurácia matemática garantida. Controle por durabilidade do produto e histórico lote a lote.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div style="font-size: 18px; font-weight: 700; color: #00d4aa; margin-bottom: 12px;">🟢 Risco por Durabilidade do Produto</div>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="padding: 12px; border-radius: 10px; background: rgba(0,212,170,.05); border: 1px solid rgba(0,212,170,.15);">
+              <div style="font-size: 13px; font-weight: 700; color: #00d4aa;">Baixo Risco (Validade ≥ 180 dias)</div>
+              <div style="font-size: 12px; color: rgba(255,255,255,.6); margin-top: 2px;">Compre em grande quantidade na baixa temporada com menor preço.</div>
+            </div>
+            <div style="padding: 12px; border-radius: 10px; background: rgba(255,179,71,.05); border: 1px solid rgba(255,179,71,.15);">
+              <div style="font-size: 13px; font-weight: 700; color: #ffb347;">Médio Risco (Validade 30–179 dias)</div>
+              <div style="font-size: 12px; color: rgba(255,255,255,.6); margin-top: 2px;">Compra moderada antecipada, avaliando proximidade do pico.</div>
+            </div>
+            <div style="padding: 12px; border-radius: 10px; background: rgba(255,82,82,.05); border: 1px solid rgba(255,82,82,.15);">
+              <div style="font-size: 13px; font-weight: 700; color: #ff5252;">Alto Risco (Validade &lt; 30 dias)</div>
+              <div style="font-size: 12px; color: rgba(255,255,255,.6); margin-top: 2px;">Compre APENAS próximo ao pico de vendas para evitar perecimento.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size: 18px; font-weight: 700; color: #c084fc; margin-bottom: 12px;">🔍 Método FIFO (First In, First Out)</div>
+          <p style="font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.6; margin-bottom: 16px;">
+            Cada item vendido consome exatamente o lote de compra mais antigo. Isso garante margem exata e auditável.
+          </p>
+
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,.04);">
+              <span>Origem Rastreada</span>
+              <strong style="color: #fff;">Fornecedor + Data + Custo Lote</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,.04);">
+              <span>Consumo da Venda</span>
+              <strong style="color: #fff;">Baixa FIFO Automática</strong>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 12px; padding: 8px 12px; border-radius: 8px; background: rgba(255,255,255,.04);">
+              <span>Desempenho de Fornecedores</span>
+              <strong style="color: #c084fc;">Ranking de Perdas por Origem</strong>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 6: QUALIDADE E ACURÁCIA DE DADOS -->
+  <div class="slide">
+    <div class="slide-content">
+      <div class="tagline">Confiança Integrada no Banco de Dados</div>
+      <h1>Qualidade & <span class="grad-teal">Acurácia dos Dados</span></h1>
+      <p class="desc">Informação errada gera decisão errada. O Sazonalizei possui 4 camadas de proteção para garantir 100% de precisão nos cálculos.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div style="font-size: 16px; font-weight: 700; color: #00d4aa; margin-bottom: 8px;">1. Validação Cadastral Obrigatória</div>
+          <div style="font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.5;">
+            Verificação rigorosa de CPF/CNPJ e dados do cliente no cadastro. Dados inconsistentes são barrados antes da gravação.
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size: 16px; font-weight: 700; color: #00d4aa; margin-bottom: 8px;">2. Precisão Financeira Decimal</div>
+          <div style="font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.5;">
+            Cálculos monetários isolados sem erros de ponto flutuante, garantindo centavo por centavo a margem do comerciante.
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size: 16px; font-weight: 700; color: #00d4aa; margin-bottom: 8px;">3. Consistência de Lote de Estoque</div>
+          <div style="font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.5;">
+            O banco de dados bloqueia vendas sem lote válido correspondente, eliminando "estoque negativo" ou fantasmas.
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size: 16px; font-weight: 700; color: #00d4aa; margin-bottom: 8px;">4. Snapshots Incorruptíveis</div>
+          <div style="font-size: 13px; color: rgba(255,255,255,.6); line-height: 1.5;">
+            Ao emitir a nota, o contexto sazonal (temperatura, rio, data) é congelado na nota — impossível de ser alterado depois.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 7: EFEITO DE REDE E LGPD -->
+  <div class="slide">
+    <div class="slide-content">
+      <div class="tagline">Segurança Legal & Crescimento em Rede</div>
+      <h1>Efeito de Rede & <span class="grad-purple">Conformidade LGPD</span></h1>
+      <p class="desc">Como os usuários do plano gratuito fortalecem os cálculos de todos com total respaldo jurídico e segurança de dados.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <div style="font-size: 18px; font-weight: 700; color: #c084fc; margin-bottom: 12px;">⚖️ Amparo Legal (Lei 13.709/2018)</div>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <div style="padding: 12px; border-radius: 10px; background: rgba(192,132,252,.05); border: 1px solid rgba(192,132,252,.15);">
+              <div style="font-size: 13px; font-weight: 700; color: #c084fc;">Art. 12 — Dado Anonimizado</div>
+              <div style="font-size: 12px; color: rgba(255,255,255,.6); margin-top: 2px;">Dados anonimizados não são considerados dados pessoais e não sofrem restrição da LGPD.</div>
+            </div>
+            <div style="padding: 12px; border-radius: 10px; background: rgba(192,132,252,.05); border: 1px solid rgba(192,132,252,.15);">
+              <div style="font-size: 13px; font-weight: 700; color: #c084fc;">Art. 7º, IX — Legítimo Interesse</div>
+              <div style="font-size: 12px; color: rgba(255,255,255,.6); margin-top: 2px;">Base legal válida para o aprimoramento do produto e inteligência agregada de mercado.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="font-size: 18px; font-weight: 700; color: #00d4aa; margin-bottom: 12px;">🌐 O Ganho Coletivo sem Exposição</div>
+          <ul style="list-style: none; display: flex; flex-direction: column; gap: 12px; font-size: 13px; color: rgba(255,255,255,.7);">
+            <li style="display: flex; gap: 10px;">
+              <span style="color: #00d4aa;">✔</span>
+              <span><strong>Troca Justa:</strong> Clientes Free usam o PDV de graça e geram padrões estatísticos regionais.</span>
+            </li>
+            <li style="display: flex; gap: 10px;">
+              <span style="color: #00d4aa;">✔</span>
+              <span><strong>Anonimização Irreversível:</strong> Nenhum dado individual de faturamento ou cliente é exposto.</span>
+            </li>
+            <li style="display: flex; gap: 10px;">
+              <span style="color: #00d4aa;">✔</span>
+              <span><strong>Barreira de Entrada (Moat):</strong> Quanto mais usuários na rede, mais precisas ficam as previsões para todos.</span>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 8: MODELO DE NEGÓCIO -->
+  <div class="slide">
+    <div class="slide-content">
+      <div class="tagline">Planos & Precificação</div>
+      <h1>Modelo de Negócio <span class="grad-amber">Claro e Escalável</span></h1>
+      <p class="desc">Acessível para quem está começando e de altíssimo valor para médios distribuidores.</p>
+
+      <div class="grid-4">
+        <div class="card">
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,.4);">Entrada</div>
+          <div style="font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 900; color: #fff; margin: 6px 0;">R$ 0</div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px;">FREE / MEI</div>
+          <div style="font-size: 11px; color: rgba(255,255,255,.5); line-height: 1.5;">PDV Básico + Alertas de Clima. Alimenta a inteligência estatística da rede.</div>
+        </div>
+
+        <div class="card" style="border-color: rgba(0,212,170,.5); background: rgba(0,212,170,.06); transform: scale(1.04);">
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #00d4aa;">Mais Popular ⭐</div>
+          <div style="font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 900; color: #00d4aa; margin: 6px 0;">R$ 149<span style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,.5);">/mês</span></div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px;">Comerciante</div>
+          <div style="font-size: 11px; color: rgba(255,255,255,.6); line-height: 1.5;">Motor Sazonal Completo + Relatórios + Inteligência de Compras. <strong>ROI de 18x!</strong></div>
+        </div>
+
+        <div class="card">
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,.4);">Avançado</div>
+          <div style="font-family: 'Space Grotesk', sans-serif; font-size: 32px; font-weight: 900; color: #ffb347; margin: 6px 0;">R$ 349<span style="font-size: 13px; font-weight: 500; color: rgba(255,255,255,.5);">/mês</span></div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px;">Distribuidor</div>
+          <div style="font-size: 11px; color: rgba(255,255,255,.5); line-height: 1.5;">Previsão 60 Dias + Eventos Regionais Privados + Gestão Avançada de Fornecedor.</div>
+        </div>
+
+        <div class="card">
+          <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: rgba(255,255,255,.4);">Corporativo</div>
+          <div style="font-family: 'Space Grotesk', sans-serif; font-size: 26px; font-weight: 900; color: #c084fc; margin: 10px 0;">Sob Consulta</div>
+          <div style="font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px;">Enterprise</div>
+          <div style="font-size: 11px; color: rgba(255,255,255,.5); line-height: 1.5;">Redes e Franquias. Multi-lojas, integração fiscal NF-e e suporte 24h dedicado.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SLIDE 9: FECHAMENTO DE IMPACTO -->
+  <div class="slide">
+    <div class="slide-content" style="text-align: center; max-width: 900px;">
+      <div class="tagline" style="justify-content: center;">O Futuro do Varejo Sazonal</div>
+      <h1>Enquanto seu concorrente decide por intuição, <span class="grad-teal">você decide por dados.</span></h1>
+      <p class="desc" style="margin: 0 auto 40px auto;">
+        O Sazonalizei PDV devolve o controle financeiro ao comerciante, elimina o desperdício de estoque e garante que nenhuma venda seja perdida nos momentos de maior demanda.
+      </p>
+
+      <div class="card" style="display: inline-block; padding: 32px 48px; border-color: rgba(0,212,170,.4); background: rgba(0,212,170,.08); margin-bottom: 30px;">
+        <div style="font-size: 13px; font-weight: 700; text-transform: uppercase; color: #00d4aa; margin-bottom: 8px;">Economia Anual Estimada</div>
+        <div class="grad-teal" style="font-family: 'Space Grotesk', sans-serif; font-size: 52px; font-weight: 900; line-height: 1;">R$ 33.600 / ano</div>
+        <div style="font-size: 13px; color: rgba(255,255,255,.6); margin-top: 8px;">Recuperados diretamente no fluxo de caixa do varejista</div>
+      </div>
+
+      <div>
+        <span style="font-size: 13px; color: rgba(255,255,255,.4);">Pressione <strong>F11</strong> no seu navegador para apresentar em Tela Cheia</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Bottom Navigation Bar -->
+<div class="bottom-bar">
+  <div class="nav-controls">
+    <button class="btn-nav" onclick="prevSlide()">◄</button>
+    <div class="dots-wrapper" id="dotsNav"></div>
+    <button class="btn-nav" onclick="nextSlide()">►</button>
+  </div>
+  <div style="font-size: 12px; color: rgba(255,255,255,.4);">Navegue usando as setas ◄ ► do teclado ou barra de espaço</div>
+</div>
+
+<script>
+  let currentSlide = 0;
+  const slides = document.querySelectorAll('.slide');
+  const totalSlides = slides.length;
+  const slideCounter = document.getElementById('slideCounter');
+  const progressBar = document.getElementById('progressBar');
+  const dotsNav = document.getElementById('dotsNav');
+
+  // Generate Nav Dots
+  slides.forEach((_, idx) => {
+    const dot = document.createElement('div');
+    dot.className = `dot-step ${idx === 0 ? 'active' : ''}`;
+    dot.onclick = () => goToSlide(idx);
+    dotsNav.appendChild(dot);
+  });
+
+  const dots = document.querySelectorAll('.dot-step');
+
+  function updateDeck() {
+    slides.forEach((slide, idx) => {
+      slide.classList.remove('active', 'out-left');
+      if (idx === currentSlide) {
+        slide.classList.add('active');
+      } else if (idx < currentSlide) {
+        slide.classList.add('out-left');
+      }
+    });
+
+    dots.forEach((dot, idx) => dot.classList.toggle('active', idx === currentSlide));
+    slideCounter.textContent = `SLIDE ${currentSlide + 1} DE ${totalSlides}`;
+    progressBar.style.width = `${((currentSlide + 1) / totalSlides) * 100}%`;
+  }
+
+  function nextSlide() {
+    if (currentSlide < totalSlides - 1) {
+      currentSlide++;
+      updateDeck();
+    }
+  }
+
+  function prevSlide() {
+    if (currentSlide > 0) {
+      currentSlide--;
+      updateDeck();
+    }
+  }
+
+  function goToSlide(idx) {
+    currentSlide = idx;
+    updateDeck();
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') nextSlide();
+    if (e.key === 'ArrowLeft') prevSlide();
+  });
+</script>
+
+</body>
+</html>
